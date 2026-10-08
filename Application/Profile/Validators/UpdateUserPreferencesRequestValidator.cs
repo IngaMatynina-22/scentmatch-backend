@@ -15,6 +15,12 @@ public class UpdateUserPreferencesRequestValidator : AbstractValidator<UpdateUse
             .GreaterThan(0)
             .When(x => x.PreferredFragranceTypeId.HasValue);
 
+        RuleFor(x => x.PreferredNoteIds)
+            .Must(ids => ids is null || (ids.Count <= 20 && ids.All(id => id > 0)))
+            .WithMessage("preferredNoteIds must contain at most 20 positive integers.")
+            .Must(ids => ids is null || ids.Distinct().Count() == ids.Count)
+            .WithMessage("preferredNoteIds must not contain duplicates.");
+
         RuleFor(x => x.Sweetness).InclusiveBetween(0, 100).When(x => x.Sweetness.HasValue);
         RuleFor(x => x.Freshness).InclusiveBetween(0, 100).When(x => x.Freshness.HasValue);
         RuleFor(x => x.Woody).InclusiveBetween(0, 100).When(x => x.Woody.HasValue);

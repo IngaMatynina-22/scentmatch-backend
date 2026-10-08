@@ -20,6 +20,12 @@ public class UserPreferences
 
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
+
+    /// <summary>
+    /// JSON array of preferred note IDs.
+    /// </summary>
+    public string? PreferredNoteIds { get; set; }
+
     public DateTime? UpdatedAt { get; set; }
 
     public User User { get; set; } = null!;

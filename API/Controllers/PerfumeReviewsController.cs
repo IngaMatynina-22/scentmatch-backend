@@ -25,10 +25,10 @@ public class PerfumeReviewsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PagedResult<ReviewDto>>> GetReviews(
         int perfumeId,
-        [FromQuery] PaginationQuery pagination,
+        [FromQuery] ReviewQueryParameters query,
         CancellationToken cancellationToken)
     {
-        return Ok(await _reviewService.GetApprovedReviewsAsync(perfumeId, pagination, cancellationToken));
+        return Ok(await _reviewService.GetApprovedReviewsAsync(perfumeId, query, cancellationToken));
     }
 
     [HttpPost("reviews")]

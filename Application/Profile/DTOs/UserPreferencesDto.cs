@@ -6,6 +6,7 @@ public class UserPreferencesDto
 {
     public NamedEntityDto? PreferredSeason { get; set; }
     public NamedEntityDto? PreferredFragranceType { get; set; }
+    public IReadOnlyList<NamedEntityDto> PreferredNotes { get; set; } = Array.Empty<NamedEntityDto>();
 
     public int? Sweetness { get; set; }
     public int? Freshness { get; set; }
@@ -27,6 +28,7 @@ public class UpdateUserPreferencesRequest
 {
     public int? PreferredSeasonId { get; set; }
     public int? PreferredFragranceTypeId { get; set; }
+    public IReadOnlyList<int>? PreferredNoteIds { get; set; }
 
     public int? Sweetness { get; set; }
     public int? Freshness { get; set; }

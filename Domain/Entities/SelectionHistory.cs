@@ -22,6 +22,12 @@ public class SelectionHistory
     public decimal? MaxPrice { get; set; }
 
     public string? SelectedNoteIds { get; set; }
+
+    /// <summary>
+    /// JSON array of top matching results (perfumeId, name, score, reasons).
+    /// </summary>
+    public string? ResultsJson { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public User User { get; set; } = null!;

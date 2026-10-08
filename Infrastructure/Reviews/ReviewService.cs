@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ScentMatch.Application.Common.Exceptions;
 using ScentMatch.Application.Common.Models;
+using ScentMatch.Application.Notifications.Interfaces;
 using ScentMatch.Application.Reviews.DTOs;
 using ScentMatch.Application.Reviews.Interfaces;
 using ScentMatch.Domain.Constants;
@@ -13,30 +14,32 @@ namespace ScentMatch.Infrastructure.Reviews;
 public class ReviewService : IReviewService
 {
     private readonly ScentMatchDbContext _dbContext;
+    private readonly INotificationDispatcher _notificationDispatcher;
 
-    public ReviewService(ScentMatchDbContext dbContext)
+    public ReviewService(
+        ScentMatchDbContext dbContext,
+        INotificationDispatcher notificationDispatcher)
     {
         _dbContext = dbContext;
+        _notificationDispatcher = notificationDispatcher;
     }
 
     public async Task<PagedResult<ReviewDto>> GetApprovedReviewsAsync(
         int perfumeId,
-        PaginationQuery pagination,
+        ReviewQueryParameters query,
         CancellationToken cancellationToken = default)
     {
         await EnsureActivePerfumeAsync(perfumeId, cancellationToken);
 
-        var query = _dbContext.Reviews
+        var reviewsQuery = _dbContext.Reviews
             .AsNoTracking()
             .Where(x => x.PerfumeId == perfumeId && x.Status == ReviewStatuses.Approved);
 
-        var totalItems = await query.CountAsync(cancellationToken);
+        var totalItems = await reviewsQuery.CountAsync(cancellationToken);
 
-        var items = await query
-            .OrderByDescending(x => x.CreatedAt)
-            .ThenByDescending(x => x.Id)
-            .Skip((pagination.Page - 1) * pagination.PageSize)
-            .Take(pagination.PageSize)
+        var items = await ApplyReviewSort(reviewsQuery, query.SortBy, query.SortOrder)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
             .Select(x => new ReviewDto
             {
                 Id = x.Id,
@@ -52,7 +55,42 @@ public class ReviewService : IReviewService
             })
             .ToListAsync(cancellationToken);
 
-        return PagedResult<ReviewDto>.Create(items, pagination.Page, pagination.PageSize, totalItems);
+        return PagedResult<ReviewDto>.Create(items, query.Page, query.PageSize, totalItems);
+    }
+
+    public async Task<PagedResult<OwnReviewDto>> GetMyReviewsAsync(
+        int userId,
+        ReviewQueryParameters query,
+        CancellationToken cancellationToken = default)
+    {
+        var reviewsQuery = _dbContext.Reviews
+            .AsNoTracking()
+            .Where(x => x.UserId == userId);
+
+        var totalItems = await reviewsQuery.CountAsync(cancellationToken);
+
+        var items = await ApplyReviewSort(reviewsQuery, query.SortBy, query.SortOrder)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(x => new OwnReviewDto
+            {
+                Id = x.Id,
+                PerfumeId = x.PerfumeId,
+                PerfumeName = x.Perfume.Name,
+                Rating = x.Rating,
+                Text = x.Text,
+                Status = x.Status,
+                CreatedAt = x.CreatedAt,
+                UpdatedAt = x.UpdatedAt,
+                User = new ReviewUserDto
+                {
+                    Id = x.User.Id,
+                    Username = x.User.UserName ?? string.Empty
+                }
+            })
+            .ToListAsync(cancellationToken);
+
+        return PagedResult<OwnReviewDto>.Create(items, query.Page, query.PageSize, totalItems);
     }
 
     public async Task<OwnReviewDto> GetMyReviewAsync(
@@ -69,6 +107,7 @@ public class ReviewService : IReviewService
             {
                 Id = x.Id,
                 PerfumeId = x.PerfumeId,
+                PerfumeName = x.Perfume.Name,
                 Rating = x.Rating,
                 Text = x.Text,
                 Status = x.Status,
@@ -121,6 +160,7 @@ public class ReviewService : IReviewService
 
         _dbContext.Reviews.Add(review);
 
+        var previousRating = perfume.Rating;
         await RecalculatePerfumeRatingAsync(perfume, cancellationToken);
 
         try
@@ -131,6 +171,12 @@ public class ReviewService : IReviewService
         {
             throw new ConflictException("You have already reviewed this perfume.");
         }
+
+        await _notificationDispatcher.NotifyRatingChangedAsync(
+            perfume,
+            previousRating,
+            perfume.Rating,
+            cancellationToken);
 
         return await MapOwnReviewAsync(review.Id, cancellationToken);
     }
@@ -157,8 +203,15 @@ public class ReviewService : IReviewService
         review.Status = ReviewStatuses.Pending;
         review.UpdatedAt = DateTime.UtcNow;
 
+        var previousRating = perfume.Rating;
         await RecalculatePerfumeRatingAsync(perfume, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _notificationDispatcher.NotifyRatingChangedAsync(
+            perfume,
+            previousRating,
+            perfume.Rating,
+            cancellationToken);
 
         return await MapOwnReviewAsync(review.Id, cancellationToken);
     }
@@ -176,9 +229,16 @@ public class ReviewService : IReviewService
         var perfume = await _dbContext.Perfumes
             .FirstAsync(x => x.Id == review.PerfumeId, cancellationToken);
 
+        var previousRating = perfume.Rating;
         _dbContext.Reviews.Remove(review);
         await RecalculatePerfumeRatingAsync(perfume, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _notificationDispatcher.NotifyRatingChangedAsync(
+            perfume,
+            previousRating,
+            perfume.Rating,
+            cancellationToken);
     }
 
     public async Task<PagedResult<AdminReviewDto>> GetAdminReviewsAsync(
@@ -233,8 +293,16 @@ public class ReviewService : IReviewService
         review.Status = ReviewStatuses.Approved;
         review.UpdatedAt = DateTime.UtcNow;
 
+        var previousRating = perfume.Rating;
         await RecalculatePerfumeRatingAsync(perfume, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _notificationDispatcher.NotifyReviewModeratedAsync(review, perfume.Name, cancellationToken);
+        await _notificationDispatcher.NotifyRatingChangedAsync(
+            perfume,
+            previousRating,
+            perfume.Rating,
+            cancellationToken);
 
         return await MapAdminReviewAsync(review.Id, cancellationToken);
     }
@@ -247,8 +315,16 @@ public class ReviewService : IReviewService
         review.Status = ReviewStatuses.Rejected;
         review.UpdatedAt = DateTime.UtcNow;
 
+        var previousRating = perfume.Rating;
         await RecalculatePerfumeRatingAsync(perfume, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _notificationDispatcher.NotifyReviewModeratedAsync(review, perfume.Name, cancellationToken);
+        await _notificationDispatcher.NotifyRatingChangedAsync(
+            perfume,
+            previousRating,
+            perfume.Rating,
+            cancellationToken);
 
         return await MapAdminReviewAsync(review.Id, cancellationToken);
     }
@@ -258,9 +334,16 @@ public class ReviewService : IReviewService
         var review = await GetReviewOrThrowAsync(reviewId, cancellationToken);
         var perfume = await _dbContext.Perfumes.FirstAsync(x => x.Id == review.PerfumeId, cancellationToken);
 
+        var previousRating = perfume.Rating;
         _dbContext.Reviews.Remove(review);
         await RecalculatePerfumeRatingAsync(perfume, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        await _notificationDispatcher.NotifyRatingChangedAsync(
+            perfume,
+            previousRating,
+            perfume.Rating,
+            cancellationToken);
     }
 
     private async Task EnsureActivePerfumeAsync(int perfumeId, CancellationToken cancellationToken)
@@ -317,6 +400,25 @@ public class ReviewService : IReviewService
         perfume.UpdatedAt = DateTime.UtcNow;
     }
 
+    private static IQueryable<Review> ApplyReviewSort(
+        IQueryable<Review> query,
+        string? sortBy,
+        string? sortOrder)
+    {
+        var field = string.IsNullOrWhiteSpace(sortBy) ? "date" : sortBy.Trim().ToLowerInvariant();
+        var descending = !string.Equals(sortOrder?.Trim(), "asc", StringComparison.OrdinalIgnoreCase);
+
+        return field switch
+        {
+            "rating" => descending
+                ? query.OrderByDescending(x => x.Rating).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.Rating).ThenByDescending(x => x.Id),
+            _ => descending
+                ? query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+                : query.OrderBy(x => x.CreatedAt).ThenByDescending(x => x.Id)
+        };
+    }
+
     private async Task<OwnReviewDto> MapOwnReviewAsync(int reviewId, CancellationToken cancellationToken)
     {
         var dto = await _dbContext.Reviews
@@ -326,6 +428,7 @@ public class ReviewService : IReviewService
             {
                 Id = x.Id,
                 PerfumeId = x.PerfumeId,
+                PerfumeName = x.Perfume.Name,
                 Rating = x.Rating,
                 Text = x.Text,
                 Status = x.Status,

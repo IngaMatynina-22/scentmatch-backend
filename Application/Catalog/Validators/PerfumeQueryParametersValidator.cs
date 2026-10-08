@@ -10,7 +10,8 @@ public class PerfumeQueryParametersValidator : AbstractValidator<PerfumeQueryPar
         "name",
         "price",
         "rating",
-        "releaseYear"
+        "releaseYear",
+        "brand"
     };
 
     private static readonly HashSet<string> AllowedSortOrder = new(StringComparer.OrdinalIgnoreCase)
@@ -51,7 +52,7 @@ public class PerfumeQueryParametersValidator : AbstractValidator<PerfumeQueryPar
 
         RuleFor(x => x.SortBy)
             .Must(value => string.IsNullOrWhiteSpace(value) || AllowedSortBy.Contains(value.Trim()))
-            .WithMessage("sortBy must be one of: name, price, rating, releaseYear.");
+            .WithMessage("sortBy must be one of: name, price, rating, releaseYear, brand.");
 
         RuleFor(x => x.SortOrder)
             .Must(value => string.IsNullOrWhiteSpace(value) || AllowedSortOrder.Contains(value.Trim()))
@@ -61,6 +62,19 @@ public class PerfumeQueryParametersValidator : AbstractValidator<PerfumeQueryPar
             .Must(BeValidNoteIdsFormat)
             .When(x => !string.IsNullOrWhiteSpace(x.NoteIds))
             .WithMessage("noteIds must be a comma-separated list of positive integers.");
+
+        RuleFor(x => x.Gender)
+            .MaximumLength(50)
+            .When(x => !string.IsNullOrWhiteSpace(x.Gender));
+
+        RuleFor(x => x.Concentration)
+            .MaximumLength(50)
+            .When(x => !string.IsNullOrWhiteSpace(x.Concentration));
+
+        RuleFor(x => x.MinSweetness).InclusiveBetween(0, 100).When(x => x.MinSweetness.HasValue);
+        RuleFor(x => x.MinFreshness).InclusiveBetween(0, 100).When(x => x.MinFreshness.HasValue);
+        RuleFor(x => x.MinWoody).InclusiveBetween(0, 100).When(x => x.MinWoody.HasValue);
+        RuleFor(x => x.MinSpicy).InclusiveBetween(0, 100).When(x => x.MinSpicy.HasValue);
 
         RuleFor(x => x.BrandId)
             .GreaterThan(0)

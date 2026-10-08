@@ -781,6 +781,9 @@ namespace ScentMatch.Infrastructure.Data.Migrations
                     b.Property<int?>("Powdery")
                         .HasColumnType("int");
 
+                    b.Property<string>("ResultsJson")
+                        .HasColumnType("longtext");
+
                     b.Property<int?>("SeasonId")
                         .HasColumnType("int");
 
@@ -948,6 +951,10 @@ namespace ScentMatch.Infrastructure.Data.Migrations
 
                     b.Property<int?>("PreferredFragranceTypeId")
                         .HasColumnType("int");
+
+                    b.Property<string>("PreferredNoteIds")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<int?>("PreferredSeasonId")
                         .HasColumnType("int");

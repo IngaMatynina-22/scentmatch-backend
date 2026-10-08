@@ -1,5 +1,6 @@
 using ScentMatch.Application.Common.Models;
 using ScentMatch.Application.History.DTOs;
+using ScentMatch.Application.Matching.DTOs;
 
 namespace ScentMatch.Application.History.Interfaces;
 
@@ -8,6 +9,12 @@ public interface ISelectionHistoryService
     Task<SelectionHistoryDto> CreateAsync(
         int userId,
         CreateSelectionHistoryRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<SelectionHistoryDto> CreateFromMatchingAsync(
+        int userId,
+        MatchingRequest request,
+        IReadOnlyList<MatchingResultDto> results,
         CancellationToken cancellationToken = default);
 
     Task<PagedResult<SelectionHistoryDto>> GetAsync(

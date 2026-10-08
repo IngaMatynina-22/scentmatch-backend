@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ScentMatch.Application.Common.Exceptions;
+using ScentMatch.Application.Common.Models;
 using ScentMatch.Application.Reviews.DTOs;
 using ScentMatch.Application.Reviews.Interfaces;
 
@@ -17,6 +18,17 @@ public class ReviewsController : ControllerBase
     public ReviewsController(IReviewService reviewService)
     {
         _reviewService = reviewService;
+    }
+
+    [HttpGet("mine")]
+    [ProducesResponseType(typeof(PagedResult<OwnReviewDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<PagedResult<OwnReviewDto>>> GetMine(
+        [FromQuery] ReviewQueryParameters query,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        return Ok(await _reviewService.GetMyReviewsAsync(userId, query, cancellationToken));
     }
 
     [HttpPut("{id:int}")]

@@ -93,6 +93,13 @@ public class ComparisonEndpointsTests : IClassFixture<CustomWebApplicationFactor
         Assert.Equal(second.Id, body.Items[0].Id);
         Assert.Equal(first.Id, body.Items[1].Id);
 
+        Assert.NotNull(body.Analysis);
+        Assert.Contains(body.Analysis.CommonNotes, n => n.Id == note.Id);
+        Assert.Contains(body.Analysis.CommonSeasons, s => s.Id == seasonId);
+        Assert.True(body.Analysis.FragranceType.IsCommon);
+        Assert.False(body.Analysis.Price.IsCommon);
+        Assert.Contains(body.Analysis.Characteristics, c => c.Name == "Sweetness" && !c.IsCommon);
+
         Assert.Equal(second.Name, body.Items[0].Name);
         Assert.NotNull(body.Items[0].Brand);
         Assert.True(body.Items[0].Brand.Id > 0);

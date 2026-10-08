@@ -3,6 +3,7 @@ using ScentMatch.Application.Catalog.DTOs;
 using ScentMatch.Application.Catalog.Interfaces;
 using ScentMatch.Application.Common.Exceptions;
 using ScentMatch.Application.Common.Models;
+using ScentMatch.Application.Notifications.Interfaces;
 using ScentMatch.Domain.Constants;
 using ScentMatch.Domain.Entities;
 using ScentMatch.Infrastructure.Data;
@@ -12,10 +13,14 @@ namespace ScentMatch.Infrastructure.Catalog;
 public class PerfumeService : IPerfumeService
 {
     private readonly ScentMatchDbContext _dbContext;
+    private readonly INotificationDispatcher _notificationDispatcher;
 
-    public PerfumeService(ScentMatchDbContext dbContext)
+    public PerfumeService(
+        ScentMatchDbContext dbContext,
+        INotificationDispatcher notificationDispatcher)
     {
         _dbContext = dbContext;
+        _notificationDispatcher = notificationDispatcher;
     }
 
     public async Task<PagedResult<PerfumeListItemDto>> GetAllAsync(
@@ -90,6 +95,8 @@ public class PerfumeService : IPerfumeService
             AddSeasons(perfume.Id, request.Seasons);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
+            await _notificationDispatcher.NotifyNewPerfumeAsync(perfume, cancellationToken);
+
             return await GetByIdAsync(perfume.Id, cancellationToken);
         }, cancellationToken);
     }
@@ -129,6 +136,8 @@ public class PerfumeService : IPerfumeService
             AddNotes(perfume.Id, request.Notes);
             AddSeasons(perfume.Id, request.Seasons);
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            await _notificationDispatcher.NotifyCatalogUpdatedAsync(perfume, cancellationToken);
 
             return await GetByIdAsync(perfume.Id, cancellationToken);
         }, cancellationToken);
@@ -216,6 +225,43 @@ public class PerfumeService : IPerfumeService
             query = query.Where(p => p.Rating >= minRating);
         }
 
+        if (!string.IsNullOrWhiteSpace(parameters.Gender))
+        {
+            var gender = parameters.Gender.Trim().ToLower();
+            query = query.Where(p => p.Gender != null && p.Gender.ToLower().Contains(gender));
+        }
+
+        if (!string.IsNullOrWhiteSpace(parameters.Concentration))
+        {
+            var concentration = parameters.Concentration.Trim().ToLower();
+            query = query.Where(p =>
+                p.Concentration != null && p.Concentration.ToLower().Contains(concentration));
+        }
+
+        if (parameters.MinSweetness.HasValue)
+        {
+            var min = parameters.MinSweetness.Value;
+            query = query.Where(p => p.Sweetness != null && p.Sweetness >= min);
+        }
+
+        if (parameters.MinFreshness.HasValue)
+        {
+            var min = parameters.MinFreshness.Value;
+            query = query.Where(p => p.Freshness != null && p.Freshness >= min);
+        }
+
+        if (parameters.MinWoody.HasValue)
+        {
+            var min = parameters.MinWoody.Value;
+            query = query.Where(p => p.Woody != null && p.Woody >= min);
+        }
+
+        if (parameters.MinSpicy.HasValue)
+        {
+            var min = parameters.MinSpicy.Value;
+            query = query.Where(p => p.Spicy != null && p.Spicy >= min);
+        }
+
         return query;
     }
 
@@ -235,6 +281,9 @@ public class PerfumeService : IPerfumeService
             "releaseyear" => descending
                 ? query.OrderByDescending(p => p.ReleaseYear).ThenBy(p => p.Name)
                 : query.OrderBy(p => p.ReleaseYear).ThenBy(p => p.Name),
+            "brand" => descending
+                ? query.OrderByDescending(p => p.Brand.Name).ThenBy(p => p.Name)
+                : query.OrderBy(p => p.Brand.Name).ThenBy(p => p.Name),
             _ => descending
                 ? query.OrderByDescending(p => p.Name)
                 : query.OrderBy(p => p.Name)

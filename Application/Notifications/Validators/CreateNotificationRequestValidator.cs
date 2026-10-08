@@ -11,7 +11,7 @@ public class CreateNotificationRequestValidator : AbstractValidator<CreateNotifi
         RuleFor(x => x.Type)
             .NotEmpty()
             .Must(NotificationTypes.IsValid)
-            .WithMessage("Type must be one of: System, Review, Recommendation, Info.");
+            .WithMessage($"Type must be one of: {NotificationTypes.AllowedList}.");
 
         RuleFor(x => x.Title)
             .NotEmpty()

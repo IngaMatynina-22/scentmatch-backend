@@ -108,12 +108,12 @@ Admin catalog/moderation routes require role `Admin`.
 | Admin catalog | `/api/admin/*` |
 | Profile | `/api/profile`, `/api/profile/preferences` |
 | Favorites / Collections | `/api/favorites`, `/api/collections` |
-| Reviews | `/api/perfumes/{id}/reviews`, `/api/reviews`, `/api/admin/reviews` |
+| Reviews | `/api/perfumes/{id}/reviews`, `/api/reviews/mine`, `/api/reviews`, `/api/admin/reviews` |
 | History | `/api/history/views`, `/api/history/selections`, `/api/history/recommendations` |
-| Matching | `POST /api/matching` |
-| Recommendations | `/api/recommendations` |
-| Comparison | `POST /api/comparison` |
-| Notifications | `/api/notifications` |
+| Matching | `POST /api/matching` (also stores selection history + top results) |
+| Recommendations | `/api/recommendations` (preferences + favorites + approved ratings) |
+| Comparison | `POST /api/comparison` (items + common/diff analysis) |
+| Notifications | `/api/notifications` (auto-created on catalog/review/recommendation events) |
 
 ## Promote a user to Admin (local)
 

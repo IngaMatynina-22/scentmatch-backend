@@ -14,6 +14,7 @@ public class SelectionHistoryConfiguration : IEntityTypeConfiguration<SelectionH
 
         builder.Property(x => x.MinPrice).HasPrecision(10, 2);
         builder.Property(x => x.MaxPrice).HasPrecision(10, 2);
+        builder.Property(x => x.ResultsJson).HasColumnType("longtext");
 
         builder.HasOne(x => x.User)
             .WithMany(x => x.SelectionHistory)

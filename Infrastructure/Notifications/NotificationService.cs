@@ -130,9 +130,42 @@ public class NotificationService : INotificationService
         CreateNotificationRequest request,
         CancellationToken cancellationToken = default)
     {
+        await ValidateCreateRequestAsync(userId, request, cancellationToken);
+
+        var entity = BuildEntity(userId, request);
+        _dbContext.Notifications.Add(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Map(entity);
+    }
+
+    public async Task CreateManyAsync(
+        IEnumerable<(int UserId, CreateNotificationRequest Request)> items,
+        CancellationToken cancellationToken = default)
+    {
+        var list = items.ToList();
+        if (list.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (userId, request) in list)
+        {
+            await ValidateCreateRequestAsync(userId, request, cancellationToken);
+            _dbContext.Notifications.Add(BuildEntity(userId, request));
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task ValidateCreateRequestAsync(
+        int userId,
+        CreateNotificationRequest request,
+        CancellationToken cancellationToken)
+    {
         if (!NotificationTypes.IsValid(request.Type))
         {
-            throw new BadRequestException("Type must be one of: System, Review, Recommendation, Info.");
+            throw new BadRequestException($"Type must be one of: {NotificationTypes.AllowedList}.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Title) || request.Title.Trim().Length > 200)
@@ -165,23 +198,18 @@ public class NotificationService : INotificationService
                 throw new BadRequestException($"Perfume with id {request.PerfumeId.Value} was not found.");
             }
         }
-
-        var entity = new Notification
-        {
-            UserId = userId,
-            PerfumeId = request.PerfumeId,
-            Type = NotificationTypes.Normalize(request.Type),
-            Title = request.Title.Trim(),
-            Message = request.Message.Trim(),
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _dbContext.Notifications.Add(entity);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        return Map(entity);
     }
+
+    private static Notification BuildEntity(int userId, CreateNotificationRequest request) => new()
+    {
+        UserId = userId,
+        PerfumeId = request.PerfumeId,
+        Type = NotificationTypes.Normalize(request.Type),
+        Title = request.Title.Trim(),
+        Message = request.Message.Trim(),
+        IsRead = false,
+        CreatedAt = DateTime.UtcNow
+    };
 
     private static NotificationDto Map(Notification entity) => new()
     {

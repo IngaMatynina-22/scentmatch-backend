@@ -93,6 +93,30 @@ public static class DependencyInjection
                     RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                     NameClaimType = System.Security.Claims.ClaimTypes.Name
                 };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var userManager = context.HttpContext.RequestServices
+                            .GetRequiredService<UserManager<User>>();
+
+                        var userIdClaim = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                            ?? context.Principal?.FindFirst("sub")?.Value;
+
+                        if (!int.TryParse(userIdClaim, out var userId))
+                        {
+                            context.Fail("Invalid user identity.");
+                            return;
+                        }
+
+                        var user = await userManager.FindByIdAsync(userId.ToString());
+                        if (user is null || !user.IsActive)
+                        {
+                            context.Fail("User is inactive or was not found.");
+                        }
+                    }
+                };
             });
 
         services.AddAuthorization();
@@ -115,6 +139,7 @@ public static class DependencyInjection
         services.AddScoped<IRecommendationHistoryService, RecommendationHistoryService>();
         services.AddScoped<IComparisonService, ComparisonService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
 
         return services;
     }

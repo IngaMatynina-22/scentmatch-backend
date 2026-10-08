@@ -31,7 +31,25 @@ public class PerfumeQueryParameters
     [Description("Minimum rating 0..5 (inclusive)")]
     public decimal? MinRating { get; set; }
 
-    [Description("Sort field: name | price | rating | releaseYear")]
+    [Description("Filter by gender (case-insensitive contains)")]
+    public string? Gender { get; set; }
+
+    [Description("Filter by concentration (case-insensitive contains)")]
+    public string? Concentration { get; set; }
+
+    [Description("Minimum sweetness 0..100 (inclusive)")]
+    public int? MinSweetness { get; set; }
+
+    [Description("Minimum freshness 0..100 (inclusive)")]
+    public int? MinFreshness { get; set; }
+
+    [Description("Minimum woody 0..100 (inclusive)")]
+    public int? MinWoody { get; set; }
+
+    [Description("Minimum spicy 0..100 (inclusive)")]
+    public int? MinSpicy { get; set; }
+
+    [Description("Sort field: name | price | rating | releaseYear | brand")]
     public string? SortBy { get; set; } = "name";
 
     [Description("Sort direction: asc | desc")]

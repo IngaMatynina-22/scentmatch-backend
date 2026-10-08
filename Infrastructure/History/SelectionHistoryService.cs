@@ -4,6 +4,7 @@ using ScentMatch.Application.Common.Exceptions;
 using ScentMatch.Application.Common.Models;
 using ScentMatch.Application.History.DTOs;
 using ScentMatch.Application.History.Interfaces;
+using ScentMatch.Application.Matching.DTOs;
 using ScentMatch.Domain.Entities;
 using ScentMatch.Infrastructure.Data;
 
@@ -11,6 +12,7 @@ namespace ScentMatch.Infrastructure.History;
 
 public class SelectionHistoryService : ISelectionHistoryService
 {
+    private const int MaxStoredResults = 20;
     private static readonly JsonSerializerOptions JsonOptions = new();
 
     private readonly ScentMatchDbContext _dbContext;
@@ -28,10 +30,22 @@ public class SelectionHistoryService : ISelectionHistoryService
         await ValidateForeignKeysAsync(request, cancellationToken);
 
         var noteIds = NormalizeNoteIds(request.SelectedNoteIds);
+        var entity = BuildEntity(userId, request, noteIds, resultsJson: null);
 
-        var entity = new SelectionHistory
+        _dbContext.SelectionHistory.Add(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return MapToDto(entity);
+    }
+
+    public async Task<SelectionHistoryDto> CreateFromMatchingAsync(
+        int userId,
+        MatchingRequest request,
+        IReadOnlyList<MatchingResultDto> results,
+        CancellationToken cancellationToken = default)
+    {
+        var createRequest = new CreateSelectionHistoryRequest
         {
-            UserId = userId,
             SeasonId = request.SeasonId,
             FragranceTypeId = request.FragranceTypeId,
             Sweetness = request.Sweetness,
@@ -46,9 +60,32 @@ public class SelectionHistoryService : ISelectionHistoryService
             Oriental = request.Oriental,
             MinPrice = request.MinPrice,
             MaxPrice = request.MaxPrice,
-            SelectedNoteIds = SerializeNoteIds(noteIds),
-            CreatedAt = DateTime.UtcNow
+            SelectedNoteIds = request.SelectedNoteIds
         };
+
+        await ValidateForeignKeysAsync(createRequest, cancellationToken);
+
+        var noteIds = NormalizeNoteIds(createRequest.SelectedNoteIds);
+        var resultItems = results
+            .Take(MaxStoredResults)
+            .Select(x => new SelectionHistoryResultItemDto
+            {
+                PerfumeId = x.PerfumeId,
+                Name = x.Name,
+                BrandName = x.BrandName,
+                Price = x.Price,
+                Score = x.Score,
+                Reasons = x.Reasons
+            })
+            .ToList();
+
+        var entity = BuildEntity(
+            userId,
+            createRequest,
+            noteIds,
+            resultsJson: resultItems.Count == 0
+                ? null
+                : JsonSerializer.Serialize(resultItems, JsonOptions));
 
         _dbContext.SelectionHistory.Add(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -72,49 +109,9 @@ public class SelectionHistoryService : ISelectionHistoryService
             .ThenByDescending(x => x.Id)
             .Skip((pagination.Page - 1) * pagination.PageSize)
             .Take(pagination.PageSize)
-            .Select(x => new
-            {
-                x.Id,
-                x.SeasonId,
-                x.FragranceTypeId,
-                x.Sweetness,
-                x.Freshness,
-                x.Woody,
-                x.Spicy,
-                x.Citrus,
-                x.Floral,
-                x.Fruity,
-                x.Powdery,
-                x.Smoky,
-                x.Oriental,
-                x.MinPrice,
-                x.MaxPrice,
-                x.SelectedNoteIds,
-                x.CreatedAt
-            })
             .ToListAsync(cancellationToken);
 
-        var dtos = rows.Select(x => new SelectionHistoryDto
-        {
-            Id = x.Id,
-            SeasonId = x.SeasonId,
-            FragranceTypeId = x.FragranceTypeId,
-            Sweetness = x.Sweetness,
-            Freshness = x.Freshness,
-            Woody = x.Woody,
-            Spicy = x.Spicy,
-            Citrus = x.Citrus,
-            Floral = x.Floral,
-            Fruity = x.Fruity,
-            Powdery = x.Powdery,
-            Smoky = x.Smoky,
-            Oriental = x.Oriental,
-            MinPrice = x.MinPrice,
-            MaxPrice = x.MaxPrice,
-            SelectedNoteIds = DeserializeNoteIds(x.SelectedNoteIds),
-            CreatedAt = x.CreatedAt
-        }).ToList();
-
+        var dtos = rows.Select(MapToDto).ToList();
         return PagedResult<SelectionHistoryDto>.Create(dtos, pagination.Page, pagination.PageSize, totalItems);
     }
 
@@ -164,6 +161,32 @@ public class SelectionHistoryService : ISelectionHistoryService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private static SelectionHistory BuildEntity(
+        int userId,
+        CreateSelectionHistoryRequest request,
+        IReadOnlyList<int> noteIds,
+        string? resultsJson) => new()
+    {
+        UserId = userId,
+        SeasonId = request.SeasonId,
+        FragranceTypeId = request.FragranceTypeId,
+        Sweetness = request.Sweetness,
+        Freshness = request.Freshness,
+        Woody = request.Woody,
+        Spicy = request.Spicy,
+        Citrus = request.Citrus,
+        Floral = request.Floral,
+        Fruity = request.Fruity,
+        Powdery = request.Powdery,
+        Smoky = request.Smoky,
+        Oriental = request.Oriental,
+        MinPrice = request.MinPrice,
+        MaxPrice = request.MaxPrice,
+        SelectedNoteIds = SerializeNoteIds(noteIds),
+        ResultsJson = resultsJson,
+        CreatedAt = DateTime.UtcNow
+    };
+
     private async Task ValidateForeignKeysAsync(
         CreateSelectionHistoryRequest request,
         CancellationToken cancellationToken)
@@ -212,7 +235,7 @@ public class SelectionHistoryService : ISelectionHistoryService
     {
         return noteIds is null || noteIds.Count == 0
             ? Array.Empty<int>()
-            : noteIds.ToList();
+            : noteIds.Distinct().ToList();
     }
 
     private static string? SerializeNoteIds(IReadOnlyList<int> noteIds)
@@ -230,6 +253,17 @@ public class SelectionHistoryService : ISelectionHistoryService
         }
 
         return JsonSerializer.Deserialize<List<int>>(json, JsonOptions) ?? [];
+    }
+
+    private static IReadOnlyList<SelectionHistoryResultItemDto> DeserializeResults(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return Array.Empty<SelectionHistoryResultItemDto>();
+        }
+
+        return JsonSerializer.Deserialize<List<SelectionHistoryResultItemDto>>(json, JsonOptions)
+               ?? [];
     }
 
     private static SelectionHistoryDto MapToDto(SelectionHistory entity) => new()
@@ -250,6 +284,7 @@ public class SelectionHistoryService : ISelectionHistoryService
         MinPrice = entity.MinPrice,
         MaxPrice = entity.MaxPrice,
         SelectedNoteIds = DeserializeNoteIds(entity.SelectedNoteIds),
+        Results = DeserializeResults(entity.ResultsJson),
         CreatedAt = entity.CreatedAt
     };
 }

@@ -7,7 +7,12 @@ public interface IReviewService
 {
     Task<PagedResult<ReviewDto>> GetApprovedReviewsAsync(
         int perfumeId,
-        PaginationQuery pagination,
+        ReviewQueryParameters query,
+        CancellationToken cancellationToken = default);
+
+    Task<PagedResult<OwnReviewDto>> GetMyReviewsAsync(
+        int userId,
+        ReviewQueryParameters query,
         CancellationToken cancellationToken = default);
 
     Task<OwnReviewDto> GetMyReviewAsync(

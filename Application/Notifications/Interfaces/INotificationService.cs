@@ -29,4 +29,11 @@ public interface INotificationService
         int userId,
         CreateNotificationRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates multiple notifications in a single SaveChanges call.
+    /// </summary>
+    Task CreateManyAsync(
+        IEnumerable<(int UserId, CreateNotificationRequest Request)> items,
+        CancellationToken cancellationToken = default);
 }

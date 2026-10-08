@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ScentMatch.Application.Catalog.DTOs;
@@ -11,6 +12,8 @@ namespace ScentMatch.Infrastructure.Profile;
 
 public class ProfileService : IProfileService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new();
+
     private readonly UserManager<User> _userManager;
     private readonly ScentMatchDbContext _dbContext;
 
@@ -105,10 +108,25 @@ public class ProfileService : IProfileService
             }
         }
 
+        var preferredNoteIds = NormalizeNoteIds(request.PreferredNoteIds);
+        if (preferredNoteIds.Count > 0)
+        {
+            var existingNotes = await _dbContext.Notes
+                .AsNoTracking()
+                .CountAsync(x => preferredNoteIds.Contains(x.Id), cancellationToken);
+            if (existingNotes != preferredNoteIds.Count)
+            {
+                throw new BadRequestException("One or more preferred notes were not found.");
+            }
+        }
+
         var preferences = await GetOrCreatePreferencesAsync(userId, cancellationToken);
 
         preferences.PreferredSeasonId = request.PreferredSeasonId;
         preferences.PreferredFragranceTypeId = request.PreferredFragranceTypeId;
+        preferences.PreferredNoteIds = preferredNoteIds.Count == 0
+            ? null
+            : JsonSerializer.Serialize(preferredNoteIds, JsonOptions);
         preferences.Sweetness = request.Sweetness;
         preferences.Freshness = request.Freshness;
         preferences.Woody = request.Woody;
@@ -190,10 +208,23 @@ public class ProfileService : IProfileService
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
+        var preferredNoteIds = DeserializeNoteIds(preferences.PreferredNoteIds);
+        IReadOnlyList<NamedEntityDto> preferredNotes = Array.Empty<NamedEntityDto>();
+        if (preferredNoteIds.Count > 0)
+        {
+            preferredNotes = await _dbContext.Notes
+                .AsNoTracking()
+                .Where(x => preferredNoteIds.Contains(x.Id))
+                .OrderBy(x => x.Name)
+                .Select(x => new NamedEntityDto { Id = x.Id, Name = x.Name })
+                .ToListAsync(cancellationToken);
+        }
+
         return new UserPreferencesDto
         {
             PreferredSeason = season,
             PreferredFragranceType = fragranceType,
+            PreferredNotes = preferredNotes,
             Sweetness = preferences.Sweetness,
             Freshness = preferences.Freshness,
             Woody = preferences.Woody,
@@ -208,6 +239,21 @@ public class ProfileService : IProfileService
             MaxPrice = preferences.MaxPrice,
             UpdatedAt = preferences.UpdatedAt
         };
+    }
+
+    private static IReadOnlyList<int> NormalizeNoteIds(IReadOnlyList<int>? noteIds) =>
+        noteIds is null || noteIds.Count == 0
+            ? Array.Empty<int>()
+            : noteIds.Distinct().ToList();
+
+    private static IReadOnlyList<int> DeserializeNoteIds(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return Array.Empty<int>();
+        }
+
+        return JsonSerializer.Deserialize<List<int>>(json, JsonOptions) ?? [];
     }
 
     private static UserProfileDto MapProfile(User user) => new()

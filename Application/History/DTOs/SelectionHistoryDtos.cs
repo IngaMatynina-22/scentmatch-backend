@@ -22,6 +22,16 @@ public class CreateSelectionHistoryRequest
     public IReadOnlyList<int>? SelectedNoteIds { get; set; }
 }
 
+public class SelectionHistoryResultItemDto
+{
+    public int PerfumeId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string BrandName { get; set; } = string.Empty;
+    public decimal? Price { get; set; }
+    public decimal Score { get; set; }
+    public IReadOnlyList<string> Reasons { get; set; } = Array.Empty<string>();
+}
+
 public class SelectionHistoryDto
 {
     public int Id { get; set; }
@@ -43,5 +53,7 @@ public class SelectionHistoryDto
     public decimal? MaxPrice { get; set; }
 
     public IReadOnlyList<int> SelectedNoteIds { get; set; } = Array.Empty<int>();
+    public IReadOnlyList<SelectionHistoryResultItemDto> Results { get; set; } =
+        Array.Empty<SelectionHistoryResultItemDto>();
     public DateTime? CreatedAt { get; set; }
 }

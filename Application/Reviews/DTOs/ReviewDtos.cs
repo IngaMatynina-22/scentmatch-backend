@@ -23,12 +23,22 @@ public class OwnReviewDto
 {
     public int Id { get; set; }
     public int PerfumeId { get; set; }
+    public string? PerfumeName { get; set; }
     public ReviewUserDto User { get; set; } = null!;
     public int Rating { get; set; }
     public string? Text { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+}
+
+public class ReviewQueryParameters : PaginationQuery
+{
+    [Description("Sort field: date | rating")]
+    public string? SortBy { get; set; } = "date";
+
+    [Description("Sort direction: asc | desc")]
+    public string? SortOrder { get; set; } = "desc";
 }
 
 public class AdminReviewUserDto

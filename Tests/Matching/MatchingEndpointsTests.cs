@@ -283,11 +283,11 @@ public class MatchingEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Match_DoesNotCreateSelectionOrRecommendationHistory()
+    public async Task Match_PersistsSelectionHistoryWithResults_ButNotRecommendationHistory()
     {
         var admin = await GetAdminTokenAsync();
         var token = await RegisterAsync();
-        await CreatePerfumeAsync(admin, $"Hist_{Guid.NewGuid():N}"[..12], sweetness: 55, price: 200);
+        var perfume = await CreatePerfumeAsync(admin, $"Hist_{Guid.NewGuid():N}"[..12], sweetness: 55, price: 200);
 
         int selectionsBefore;
         int recommendationsBefore;
@@ -298,13 +298,20 @@ public class MatchingEndpointsTests : IClassFixture<CustomWebApplicationFactory>
             recommendationsBefore = await db.RecommendationHistory.CountAsync();
         }
 
-        await MatchAsync(token, new MatchingRequest { Sweetness = 55 });
+        var match = await MatchAsync(token, new MatchingRequest { Sweetness = 55 });
 
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ScentMatchDbContext>();
-            Assert.Equal(selectionsBefore, await db.SelectionHistory.CountAsync());
+            Assert.Equal(selectionsBefore + 1, await db.SelectionHistory.CountAsync());
             Assert.Equal(recommendationsBefore, await db.RecommendationHistory.CountAsync());
+
+            var history = await db.SelectionHistory
+                .OrderByDescending(x => x.Id)
+                .FirstAsync();
+            Assert.False(string.IsNullOrWhiteSpace(history.ResultsJson));
+            Assert.Contains(perfume.Id.ToString(), history.ResultsJson);
+            Assert.NotEmpty(match.Items);
         }
     }
 
