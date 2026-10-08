@@ -19,6 +19,7 @@ public static class CatalogDemoSeeder
         {
             await EnsureReferenceDataAsync(db);
             await EnsureDemoCatalogAsync(db);
+            logger.LogInformation("Catalog demo seed completed.");
         }
         catch (Exception ex)
         {
@@ -58,33 +59,10 @@ public static class CatalogDemoSeeder
 
     private static async Task EnsureDemoCatalogAsync(ScentMatchDbContext db)
     {
-        if (!await db.Brands.AnyAsync(x => x.Name == "Chanel"))
-        {
-            db.Brands.Add(new Brand
-            {
-                Name = "Chanel",
-                Description = "French luxury fashion and fragrance house.",
-                Country = "France",
-                Website = "https://www.chanel.com",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
-        if (!await db.Brands.AnyAsync(x => x.Name == "Dior"))
-        {
-            db.Brands.Add(new Brand
-            {
-                Name = "Dior",
-                Description = "Christian Dior perfume house.",
-                Country = "France",
-                Website = "https://www.dior.com",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-
-        await db.SaveChangesAsync();
+        await EnsureBrandAsync(db, "Chanel", "French luxury fashion and fragrance house.", "France", "https://www.chanel.com");
+        await EnsureBrandAsync(db, "Dior", "Christian Dior perfume house.", "France", "https://www.dior.com");
+        await EnsureBrandAsync(db, "Tom Ford", "Luxury designer fragrance brand.", "USA", "https://www.tomford.com");
+        await EnsureBrandAsync(db, "Yves Saint Laurent", "YSL Beauty fragrances.", "France", "https://www.yslbeauty.com");
 
         var demoNotes = new[]
         {
@@ -92,7 +70,14 @@ public static class CatalogDemoSeeder
             ("Rose", "Floral"),
             ("Vanilla", "Gourmand"),
             ("Sandalwood", "Woody"),
-            ("Jasmine", "Floral")
+            ("Jasmine", "Floral"),
+            ("Amber", "Oriental"),
+            ("Cedar", "Woody"),
+            ("Lemon", "Citrus"),
+            ("Patchouli", "Woody"),
+            ("Musk", "Powdery"),
+            ("Pepper", "Spicy"),
+            ("Iris", "Powdery")
         };
 
         foreach (var (name, category) in demoNotes)
@@ -105,41 +90,146 @@ public static class CatalogDemoSeeder
 
         await db.SaveChangesAsync();
 
-        if (await db.Perfumes.AnyAsync(x => x.Name == "Bleu de Chanel"))
+        await EnsurePerfumeAsync(
+            db,
+            name: "Bleu de Chanel",
+            brandName: "Chanel",
+            fragranceTypeName: "Woody",
+            description: "A woody aromatic fragrance for men.",
+            releaseYear: 2010,
+            concentration: "EDT",
+            gender: "Male",
+            price: 120,
+            characteristics: (20, 75, 80, 35, 70, 15, 10, 10, 20, 25),
+            notes: [("Bergamot", NoteTypes.Top), ("Sandalwood", NoteTypes.Middle), ("Vanilla", NoteTypes.Base)],
+            seasons: [("Summer", 85), ("All Season", 70)]);
+
+        await EnsurePerfumeAsync(
+            db,
+            name: "J'adore",
+            brandName: "Dior",
+            fragranceTypeName: "Floral",
+            description: "A luminous floral fragrance with ylang-ylang and rose.",
+            releaseYear: 1999,
+            concentration: "EDP",
+            gender: "Female",
+            price: 145,
+            characteristics: (40, 55, 20, 15, 30, 90, 35, 40, 5, 25),
+            notes: [("Jasmine", NoteTypes.Top), ("Rose", NoteTypes.Middle), ("Musk", NoteTypes.Base)],
+            seasons: [("Spring", 90), ("Summer", 75)]);
+
+        await EnsurePerfumeAsync(
+            db,
+            name: "Sauvage",
+            brandName: "Dior",
+            fragranceTypeName: "Fresh",
+            description: "A fresh spicy fragrance with bergamot and pepper.",
+            releaseYear: 2015,
+            concentration: "EDT",
+            gender: "Male",
+            price: 130,
+            characteristics: (15, 85, 45, 55, 80, 10, 10, 10, 15, 20),
+            notes: [("Bergamot", NoteTypes.Top), ("Pepper", NoteTypes.Middle), ("Amber", NoteTypes.Base)],
+            seasons: [("Summer", 90), ("Spring", 70)]);
+
+        await EnsurePerfumeAsync(
+            db,
+            name: "Black Orchid",
+            brandName: "Tom Ford",
+            fragranceTypeName: "Oriental",
+            description: "A rich oriental floral with dark accords.",
+            releaseYear: 2006,
+            concentration: "EDP",
+            gender: "Unisex",
+            price: 210,
+            characteristics: (55, 25, 40, 45, 10, 60, 30, 35, 40, 85),
+            notes: [("Bergamot", NoteTypes.Top), ("Patchouli", NoteTypes.Middle), ("Vanilla", NoteTypes.Base)],
+            seasons: [("Autumn", 90), ("Winter", 95)]);
+
+        await EnsurePerfumeAsync(
+            db,
+            name: "Libre",
+            brandName: "Yves Saint Laurent",
+            fragranceTypeName: "Floral",
+            description: "A lavender and orange blossom floral with a warm base.",
+            releaseYear: 2019,
+            concentration: "EDP",
+            gender: "Female",
+            price: 155,
+            characteristics: (45, 50, 25, 20, 35, 80, 25, 30, 10, 35),
+            notes: [("Lemon", NoteTypes.Top), ("Jasmine", NoteTypes.Middle), ("Vanilla", NoteTypes.Base)],
+            seasons: [("Spring", 85), ("All Season", 70)]);
+    }
+
+    private static async Task EnsureBrandAsync(
+        ScentMatchDbContext db,
+        string name,
+        string description,
+        string country,
+        string website)
+    {
+        if (await db.Brands.AnyAsync(x => x.Name == name))
         {
             return;
         }
 
-        var brand = await db.Brands.FirstAsync(x => x.Name == "Chanel");
-        var fragranceType = await db.FragranceTypes.FirstAsync(x => x.Name == "Woody");
-        var bergamot = await db.Notes.FirstAsync(x => x.Name == "Bergamot");
-        var sandalwood = await db.Notes.FirstAsync(x => x.Name == "Sandalwood");
-        var vanilla = await db.Notes.FirstAsync(x => x.Name == "Vanilla");
-        var summer = await db.Seasons.FirstAsync(x => x.Name == "Summer");
-        var allSeason = await db.Seasons.FirstAsync(x => x.Name == "All Season");
+        db.Brands.Add(new Brand
+        {
+            Name = name,
+            Description = description,
+            Country = country,
+            Website = website,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task EnsurePerfumeAsync(
+        ScentMatchDbContext db,
+        string name,
+        string brandName,
+        string fragranceTypeName,
+        string description,
+        int releaseYear,
+        string concentration,
+        string gender,
+        decimal price,
+        (int Sweetness, int Freshness, int Woody, int Spicy, int Citrus, int Floral, int Fruity, int Powdery, int Smoky, int Oriental) characteristics,
+        (string NoteName, string NoteType)[] notes,
+        (string SeasonName, int Suitability)[] seasons)
+    {
+        if (await db.Perfumes.AnyAsync(x => x.Name == name))
+        {
+            return;
+        }
+
+        var brand = await db.Brands.FirstAsync(x => x.Name == brandName);
+        var fragranceType = await db.FragranceTypes.FirstAsync(x => x.Name == fragranceTypeName);
 
         var perfume = new Perfume
         {
-            Name = "Bleu de Chanel",
+            Name = name,
             BrandId = brand.Id,
             FragranceTypeId = fragranceType.Id,
-            Description = "A woody aromatic fragrance for men.",
-            ReleaseYear = 2010,
-            Concentration = "EDT",
-            Gender = "Male",
-            Price = 120,
+            Description = description,
+            ReleaseYear = releaseYear,
+            Concentration = concentration,
+            Gender = gender,
+            Price = price,
             Rating = 0,
             ReviewsCount = 0,
-            Sweetness = 20,
-            Freshness = 75,
-            Woody = 80,
-            Spicy = 35,
-            Citrus = 70,
-            Floral = 15,
-            Fruity = 10,
-            Powdery = 10,
-            Smoky = 20,
-            Oriental = 25,
+            Sweetness = characteristics.Sweetness,
+            Freshness = characteristics.Freshness,
+            Woody = characteristics.Woody,
+            Spicy = characteristics.Spicy,
+            Citrus = characteristics.Citrus,
+            Floral = characteristics.Floral,
+            Fruity = characteristics.Fruity,
+            Powdery = characteristics.Powdery,
+            Smoky = characteristics.Smoky,
+            Oriental = characteristics.Oriental,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -147,14 +237,27 @@ public static class CatalogDemoSeeder
         db.Perfumes.Add(perfume);
         await db.SaveChangesAsync();
 
-        db.PerfumeNotes.AddRange(
-            new PerfumeNote { PerfumeId = perfume.Id, NoteId = bergamot.Id, NoteType = NoteTypes.Top },
-            new PerfumeNote { PerfumeId = perfume.Id, NoteId = sandalwood.Id, NoteType = NoteTypes.Middle },
-            new PerfumeNote { PerfumeId = perfume.Id, NoteId = vanilla.Id, NoteType = NoteTypes.Base });
+        foreach (var (noteName, noteType) in notes)
+        {
+            var note = await db.Notes.FirstAsync(x => x.Name == noteName);
+            db.PerfumeNotes.Add(new PerfumeNote
+            {
+                PerfumeId = perfume.Id,
+                NoteId = note.Id,
+                NoteType = noteType
+            });
+        }
 
-        db.PerfumeSeasons.AddRange(
-            new PerfumeSeason { PerfumeId = perfume.Id, SeasonId = summer.Id, Suitability = 85 },
-            new PerfumeSeason { PerfumeId = perfume.Id, SeasonId = allSeason.Id, Suitability = 70 });
+        foreach (var (seasonName, suitability) in seasons)
+        {
+            var season = await db.Seasons.FirstAsync(x => x.Name == seasonName);
+            db.PerfumeSeasons.Add(new PerfumeSeason
+            {
+                PerfumeId = perfume.Id,
+                SeasonId = season.Id,
+                Suitability = suitability
+            });
+        }
 
         await db.SaveChangesAsync();
     }

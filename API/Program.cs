@@ -5,6 +5,10 @@ using ScentMatch.Application.DependencyInjection;
 using ScentMatch.Infrastructure.Data.Seed;
 using ScentMatch.Infrastructure.DependencyInjection;
 
+var seedOnly = args.Any(a =>
+    a.Equals("--seed", StringComparison.OrdinalIgnoreCase) ||
+    a.Equals("--seed-db", StringComparison.OrdinalIgnoreCase));
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -63,6 +67,12 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+if (seedOnly)
+{
+    await DatabaseSeeder.SeedAsync(app.Services, applyMigrations: true);
+    return;
+}
 
 await IdentityRoleSeeder.SeedAsync(app.Services);
 await CatalogDemoSeeder.SeedAsync(app.Services);

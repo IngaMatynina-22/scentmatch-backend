@@ -2,6 +2,15 @@
 
 ASP.NET Core Web API for personalized perfume matching and comparison (**ScentMatch**).
 
+## Documentation
+
+| Language | File |
+| --- | --- |
+| Українська | [docs/API.uk.md](docs/API.uk.md) |
+| English | [docs/API.en.md](docs/API.en.md) |
+
+The docs cover setup, seed, auth, every route, request/response models, business rules, and error codes.
+
 ## Stack
 
 - ASP.NET Core 8 Web API
@@ -20,6 +29,8 @@ ScentMatch/
   Domain/          Entities, constants
   Infrastructure/  EF Core, Identity, services, migrations, seed
   Tests/           Integration tests
+  docs/            Full API documentation (UK / EN)
+  scripts/         Helper scripts (database seed)
 ```
 
 ## Prerequisites
@@ -65,6 +76,33 @@ Create a new migration only when the model changes:
 dotnet ef migrations add MigrationName --project Infrastructure --startup-project API --output-dir Data/Migrations
 ```
 
+## Seed the database
+
+Apply migrations and fill demo catalog + demo users:
+
+```powershell
+dotnet run --project API -- --seed-db
+```
+
+Or:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\seed-db.ps1
+```
+
+Also accepted: `--seed`.
+
+### Demo accounts created by seed
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `admin@scentmatch.local` | `Admin123!` |
+| User | `user@scentmatch.local` | `User1234!` |
+
+Seed is idempotent. After seed the process exits (API host does not start).
+
+On normal `dotnet run`, roles + catalog demo data are still seeded lightly; use `--seed-db` for full demo users and migration apply.
+
 ## Run the API
 
 ```powershell
@@ -75,8 +113,6 @@ dotnet run --project API
 
 - Swagger UI (Development): `https://localhost:<port>/swagger`
 - Default CORS origins: `http://localhost:5173`, `http://localhost:3000`
-
-On startup the API seeds Identity roles (`User`, `Admin`) and optional catalog demo data (idempotent).
 
 ## Run tests
 
@@ -115,9 +151,7 @@ Admin catalog/moderation routes require role `Admin`.
 | Comparison | `POST /api/comparison` (items + common/diff analysis) |
 | Notifications | `/api/notifications` (auto-created on catalog/review/recommendation events) |
 
-## Promote a user to Admin (local)
-
-After registration, assign the `Admin` role in the database / Identity store, then log in again so the JWT includes the role claim.
+See [docs/API.en.md](docs/API.en.md) / [docs/API.uk.md](docs/API.uk.md) for the full route reference.
 
 ## Notes
 
