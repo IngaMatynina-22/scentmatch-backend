@@ -25,13 +25,14 @@ public class CreatePerfumeRequestValidator : AbstractValidator<CreatePerfumeRequ
 
         RuleFor(x => x.Concentration).MaximumLength(50).When(x => x.Concentration is not null);
         RuleFor(x => x.Gender).MaximumLength(50).When(x => x.Gender is not null);
-        RuleFor(x => x.ImageUrl).MaximumLength(500).When(x => x.ImageUrl is not null);
+        RuleFor(x => x.ImageUrl).MaximumLength(1000).When(x => x.ImageUrl is not null);
 
         RuleFor(x => x.Characteristics!).SetValidator(new PerfumeCharacteristicsDtoValidator())
             .When(x => x.Characteristics is not null);
 
         RuleForEach(x => x.Notes).SetValidator(new PerfumeNoteInputDtoValidator());
         RuleForEach(x => x.Seasons).SetValidator(new PerfumeSeasonInputDtoValidator());
+        RuleForEach(x => x.ShopLinks).SetValidator(new PerfumeShopLinkInputDtoValidator());
 
         RuleFor(x => x.Notes)
             .Must(notes => notes.Select(n => n.NoteId).Distinct().Count() == notes.Count)
@@ -64,13 +65,14 @@ public class UpdatePerfumeRequestValidator : AbstractValidator<UpdatePerfumeRequ
 
         RuleFor(x => x.Concentration).MaximumLength(50).When(x => x.Concentration is not null);
         RuleFor(x => x.Gender).MaximumLength(50).When(x => x.Gender is not null);
-        RuleFor(x => x.ImageUrl).MaximumLength(500).When(x => x.ImageUrl is not null);
+        RuleFor(x => x.ImageUrl).MaximumLength(1000).When(x => x.ImageUrl is not null);
 
         RuleFor(x => x.Characteristics!).SetValidator(new PerfumeCharacteristicsDtoValidator())
             .When(x => x.Characteristics is not null);
 
         RuleForEach(x => x.Notes).SetValidator(new PerfumeNoteInputDtoValidator());
         RuleForEach(x => x.Seasons).SetValidator(new PerfumeSeasonInputDtoValidator());
+        RuleForEach(x => x.ShopLinks).SetValidator(new PerfumeShopLinkInputDtoValidator());
 
         RuleFor(x => x.Notes)
             .Must(notes => notes.Select(n => n.NoteId).Distinct().Count() == notes.Count)
@@ -117,5 +119,22 @@ public class PerfumeSeasonInputDtoValidator : AbstractValidator<PerfumeSeasonInp
     {
         RuleFor(x => x.SeasonId).GreaterThan(0);
         RuleFor(x => x.Suitability).InclusiveBetween(0, 100);
+    }
+}
+
+public class PerfumeShopLinkInputDtoValidator : AbstractValidator<PerfumeShopLinkInputDto>
+{
+    public PerfumeShopLinkInputDtoValidator()
+    {
+        RuleFor(x => x.StoreName)
+            .NotEmpty()
+            .MaximumLength(100);
+
+        RuleFor(x => x.Url)
+            .NotEmpty()
+            .MaximumLength(1000)
+            .Must(url => Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                         && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            .WithMessage("Url must be a valid http or https address.");
     }
 }

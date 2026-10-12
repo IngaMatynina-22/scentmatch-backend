@@ -101,6 +101,10 @@ Also accepted: `--seed`.
 
 Seed is idempotent. After seed the process exits (API host does not start).
 
+Catalog seed includes **40+ perfumes** across many brands, each with:
+- `imageUrl` (photo)
+- `shopLinks` (Notino, Sephora, Douglas, brand site)
+
 On normal `dotnet run`, roles + catalog demo data are still seeded lightly; use `--seed-db` for full demo users and migration apply.
 
 ## Run the API

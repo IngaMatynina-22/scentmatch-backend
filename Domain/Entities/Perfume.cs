@@ -34,6 +34,7 @@ public class Perfume
     public FragranceType FragranceType { get; set; } = null!;
     public ICollection<PerfumeNote> PerfumeNotes { get; set; } = new List<PerfumeNote>();
     public ICollection<PerfumeSeason> PerfumeSeasons { get; set; } = new List<PerfumeSeason>();
+    public ICollection<PerfumeShopLink> ShopLinks { get; set; } = new List<PerfumeShopLink>();
     public ICollection<FavoritePerfume> FavoritePerfumes { get; set; } = new List<FavoritePerfume>();
     public ICollection<CollectionPerfume> CollectionPerfumes { get; set; } = new List<CollectionPerfume>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();

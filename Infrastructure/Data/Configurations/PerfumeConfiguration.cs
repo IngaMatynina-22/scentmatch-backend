@@ -18,7 +18,7 @@ public class PerfumeConfiguration : IEntityTypeConfiguration<Perfume>
 
         builder.Property(x => x.Concentration).HasMaxLength(50);
         builder.Property(x => x.Gender).HasMaxLength(50);
-        builder.Property(x => x.ImageUrl).HasMaxLength(500);
+        builder.Property(x => x.ImageUrl).HasMaxLength(1000);
 
         builder.Property(x => x.Price).HasPrecision(10, 2);
         builder.Property(x => x.Rating)

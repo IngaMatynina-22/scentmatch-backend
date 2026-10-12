@@ -417,8 +417,8 @@ namespace ScentMatch.Infrastructure.Data.Migrations
                         .HasColumnType("varchar(50)");
 
                     b.Property<string>("ImageUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -502,6 +502,37 @@ namespace ScentMatch.Infrastructure.Data.Migrations
                     b.HasIndex("NoteId");
 
                     b.ToTable("perfume_notes", (string)null);
+                });
+
+            modelBuilder.Entity("ScentMatch.Domain.Entities.PerfumeShopLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PerfumeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StoreName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PerfumeId");
+
+                    b.ToTable("perfume_shop_links", (string)null);
                 });
 
             modelBuilder.Entity("ScentMatch.Domain.Entities.PerfumeSeason", b =>
@@ -1193,6 +1224,17 @@ namespace ScentMatch.Infrastructure.Data.Migrations
                     b.Navigation("Season");
                 });
 
+            modelBuilder.Entity("ScentMatch.Domain.Entities.PerfumeShopLink", b =>
+                {
+                    b.HasOne("ScentMatch.Domain.Entities.Perfume", "Perfume")
+                        .WithMany("ShopLinks")
+                        .HasForeignKey("PerfumeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Perfume");
+                });
+
             modelBuilder.Entity("ScentMatch.Domain.Entities.RecommendationHistory", b =>
                 {
                     b.HasOne("ScentMatch.Domain.Entities.Perfume", "Perfume")
@@ -1369,6 +1411,8 @@ namespace ScentMatch.Infrastructure.Data.Migrations
                     b.Navigation("RecommendationHistory");
 
                     b.Navigation("Reviews");
+
+                    b.Navigation("ShopLinks");
 
                     b.Navigation("ViewHistory");
                 });

@@ -84,6 +84,16 @@ internal static class CatalogMappings
                 Name = x.Season.Name,
                 Suitability = x.Suitability
             })
+            .ToList(),
+        ShopLinks = (perfume.ShopLinks ?? [])
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.Id)
+            .Select(x => new PerfumeShopLinkDto
+            {
+                Id = x.Id,
+                StoreName = x.StoreName,
+                Url = x.Url
+            })
             .ToList()
     };
 
@@ -106,7 +116,8 @@ internal static class CatalogMappings
             ReviewsCount = listItem.ReviewsCount,
             Characteristics = listItem.Characteristics,
             Notes = listItem.Notes,
-            Seasons = listItem.Seasons
+            Seasons = listItem.Seasons,
+            ShopLinks = listItem.ShopLinks
         };
     }
 

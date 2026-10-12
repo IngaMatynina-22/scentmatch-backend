@@ -22,6 +22,7 @@ public class ScentMatchDbContext
     public DbSet<Perfume> Perfumes => Set<Perfume>();
     public DbSet<PerfumeNote> PerfumeNotes => Set<PerfumeNote>();
     public DbSet<PerfumeSeason> PerfumeSeasons => Set<PerfumeSeason>();
+    public DbSet<PerfumeShopLink> PerfumeShopLinks => Set<PerfumeShopLink>();
     public DbSet<FavoritePerfume> FavoritePerfumes => Set<FavoritePerfume>();
     public DbSet<Collection> Collections => Set<Collection>();
     public DbSet<CollectionPerfume> CollectionPerfumes => Set<CollectionPerfume>();

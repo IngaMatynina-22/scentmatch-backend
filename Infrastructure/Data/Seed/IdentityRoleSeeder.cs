@@ -14,19 +14,27 @@ public static class IdentityRoleSeeder
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<Role>>();
         var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("IdentityRoleSeeder");
 
-        foreach (var roleName in AppRoles.All)
+        try
         {
-            if (await roleManager.RoleExistsAsync(roleName))
+            foreach (var roleName in AppRoles.All)
             {
-                continue;
-            }
+                if (await roleManager.RoleExistsAsync(roleName))
+                {
+                    continue;
+                }
 
-            var result = await roleManager.CreateAsync(new Role { Name = roleName });
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                logger.LogError("Failed to create role {RoleName}: {Errors}", roleName, errors);
+                var result = await roleManager.CreateAsync(new Role { Name = roleName });
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    logger.LogError("Failed to create role {RoleName}: {Errors}", roleName, errors);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            // Match CatalogDemoSeeder / DemoUsersSeeder: do not crash host startup when MySQL is misconfigured.
+            logger.LogWarning(ex, "Identity role seed skipped due to database error.");
         }
     }
 }

@@ -46,6 +46,19 @@ public class PerfumeSeasonInputDto
     public int Suitability { get; set; }
 }
 
+public class PerfumeShopLinkDto
+{
+    public int Id { get; set; }
+    public string StoreName { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+}
+
+public class PerfumeShopLinkInputDto
+{
+    public string StoreName { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+}
+
 public class PerfumeListItemDto
 {
     public int Id { get; set; }
@@ -63,6 +76,7 @@ public class PerfumeListItemDto
     public PerfumeCharacteristicsDto Characteristics { get; set; } = null!;
     public IReadOnlyList<PerfumeNoteDto> Notes { get; set; } = Array.Empty<PerfumeNoteDto>();
     public IReadOnlyList<PerfumeSeasonDto> Seasons { get; set; } = Array.Empty<PerfumeSeasonDto>();
+    public IReadOnlyList<PerfumeShopLinkDto> ShopLinks { get; set; } = Array.Empty<PerfumeShopLinkDto>();
 }
 
 public class PerfumeDetailsDto : PerfumeListItemDto
@@ -83,6 +97,7 @@ public class CreatePerfumeRequest
     public PerfumeCharacteristicsDto? Characteristics { get; set; }
     public List<PerfumeNoteInputDto> Notes { get; set; } = [];
     public List<PerfumeSeasonInputDto> Seasons { get; set; } = [];
+    public List<PerfumeShopLinkInputDto> ShopLinks { get; set; } = [];
 }
 
 public class UpdatePerfumeRequest
@@ -99,4 +114,5 @@ public class UpdatePerfumeRequest
     public PerfumeCharacteristicsDto? Characteristics { get; set; }
     public List<PerfumeNoteInputDto> Notes { get; set; } = [];
     public List<PerfumeSeasonInputDto> Seasons { get; set; } = [];
+    public List<PerfumeShopLinkInputDto> ShopLinks { get; set; } = [];
 }

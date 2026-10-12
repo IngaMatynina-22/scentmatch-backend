@@ -615,7 +615,7 @@ All scales are nullable `int?` in range **0…100**:
 
 ### PerfumeListItemDto / PerfumeDetailsDto
 
-Fields: `id`, `name`, `brand`, `fragranceType`, `description`, `releaseYear`, `concentration`, `gender`, `price`, `imageUrl`, `rating`, `reviewsCount`, `characteristics`, `notes[]`, `seasons[]`.
+Fields: `id`, `name`, `brand`, `fragranceType`, `description`, `releaseYear`, `concentration`, `gender`, `price`, `imageUrl`, `rating`, `reviewsCount`, `characteristics`, `notes[]`, `seasons[]`, `shopLinks[]` (`storeName`, `url`).
 
 ### ComparisonAnalysisDto
 

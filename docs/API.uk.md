@@ -615,7 +615,7 @@ UTC (`DateTime` ISO-8601).
 
 ### PerfumeListItemDto / PerfumeDetailsDto
 
-Поля: `id`, `name`, `brand`, `fragranceType`, `description`, `releaseYear`, `concentration`, `gender`, `price`, `imageUrl`, `rating`, `reviewsCount`, `characteristics`, `notes[]`, `seasons[]`.
+Поля: `id`, `name`, `brand`, `fragranceType`, `description`, `releaseYear`, `concentration`, `gender`, `price`, `imageUrl`, `rating`, `reviewsCount`, `characteristics`, `notes[]`, `seasons[]`, `shopLinks[]` (`storeName`, `url`).
 
 ### ComparisonAnalysisDto
 

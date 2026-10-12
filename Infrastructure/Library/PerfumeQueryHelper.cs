@@ -16,7 +16,8 @@ internal static class PerfumeQueryHelper
             .Include(x => x.PerfumeNotes)
                 .ThenInclude(x => x.Note)
             .Include(x => x.PerfumeSeasons)
-                .ThenInclude(x => x.Season);
+                .ThenInclude(x => x.Season)
+            .Include(x => x.ShopLinks);
     }
 
     public static Task<bool> IsActivePerfumeAsync(

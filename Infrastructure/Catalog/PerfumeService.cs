@@ -42,6 +42,7 @@ public class PerfumeService : IPerfumeService
                 .ThenInclude(x => x.Note)
             .Include(x => x.PerfumeSeasons)
                 .ThenInclude(x => x.Season)
+            .Include(x => x.ShopLinks)
             .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
@@ -93,6 +94,7 @@ public class PerfumeService : IPerfumeService
 
             AddNotes(perfume.Id, request.Notes);
             AddSeasons(perfume.Id, request.Seasons);
+            AddShopLinks(perfume.Id, request.ShopLinks);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             await _notificationDispatcher.NotifyNewPerfumeAsync(perfume, cancellationToken);
@@ -106,6 +108,7 @@ public class PerfumeService : IPerfumeService
         var perfume = await _dbContext.Perfumes
             .Include(x => x.PerfumeNotes)
             .Include(x => x.PerfumeSeasons)
+            .Include(x => x.ShopLinks)
             .FirstOrDefaultAsync(x => x.Id == id && x.IsActive, cancellationToken);
 
         if (perfume is null)
@@ -131,10 +134,12 @@ public class PerfumeService : IPerfumeService
 
             _dbContext.PerfumeNotes.RemoveRange(perfume.PerfumeNotes);
             _dbContext.PerfumeSeasons.RemoveRange(perfume.PerfumeSeasons);
+            _dbContext.PerfumeShopLinks.RemoveRange(perfume.ShopLinks);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             AddNotes(perfume.Id, request.Notes);
             AddSeasons(perfume.Id, request.Seasons);
+            AddShopLinks(perfume.Id, request.ShopLinks);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             await _notificationDispatcher.NotifyCatalogUpdatedAsync(perfume, cancellationToken);
@@ -171,7 +176,8 @@ public class PerfumeService : IPerfumeService
             .Include(x => x.PerfumeNotes)
                 .ThenInclude(x => x.Note)
             .Include(x => x.PerfumeSeasons)
-                .ThenInclude(x => x.Season);
+                .ThenInclude(x => x.Season)
+            .Include(x => x.ShopLinks);
     }
 
     private static IQueryable<Perfume> ApplyFilters(IQueryable<Perfume> query, PerfumeQueryParameters parameters)
@@ -370,6 +376,33 @@ public class PerfumeService : IPerfumeService
                 PerfumeId = perfumeId,
                 SeasonId = season.SeasonId,
                 Suitability = season.Suitability
+            });
+        }
+    }
+
+    private void AddShopLinks(int perfumeId, IEnumerable<PerfumeShopLinkInputDto>? shopLinks)
+    {
+        if (shopLinks is null)
+        {
+            return;
+        }
+
+        var order = 0;
+        foreach (var link in shopLinks)
+        {
+            var storeName = link.StoreName?.Trim();
+            var url = link.Url?.Trim();
+            if (string.IsNullOrWhiteSpace(storeName) || string.IsNullOrWhiteSpace(url))
+            {
+                continue;
+            }
+
+            _dbContext.PerfumeShopLinks.Add(new PerfumeShopLink
+            {
+                PerfumeId = perfumeId,
+                StoreName = storeName,
+                Url = url,
+                SortOrder = order++
             });
         }
     }
