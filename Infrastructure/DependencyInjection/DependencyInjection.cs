@@ -6,26 +6,34 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using ScentMatch.Application.Admin.Interfaces;
+using ScentMatch.Application.Analytics.Interfaces;
 using ScentMatch.Application.Auth.Interfaces;
 using ScentMatch.Application.Catalog.Interfaces;
 using ScentMatch.Application.Comparison.Interfaces;
+using ScentMatch.Application.Integrations;
 using ScentMatch.Application.Options;
 using ScentMatch.Application.History.Interfaces;
 using ScentMatch.Application.Library.Interfaces;
 using ScentMatch.Application.Matching.Interfaces;
 using ScentMatch.Application.Notifications.Interfaces;
+using ScentMatch.Application.PriceWatches.Interfaces;
 using ScentMatch.Application.Profile.Interfaces;
 using ScentMatch.Application.Recommendations.Interfaces;
 using ScentMatch.Application.Reviews.Interfaces;
 using ScentMatch.Domain.Entities;
+using ScentMatch.Infrastructure.Admin;
+using ScentMatch.Infrastructure.Analytics;
 using ScentMatch.Infrastructure.Auth;
 using ScentMatch.Infrastructure.Catalog;
 using ScentMatch.Infrastructure.Comparison;
 using ScentMatch.Infrastructure.Data;
 using ScentMatch.Infrastructure.History;
+using ScentMatch.Infrastructure.Integrations;
 using ScentMatch.Infrastructure.Library;
 using ScentMatch.Infrastructure.Matching;
 using ScentMatch.Infrastructure.Notifications;
+using ScentMatch.Infrastructure.PriceWatches;
 using ScentMatch.Infrastructure.Profile;
 using ScentMatch.Infrastructure.Recommendations;
 using ScentMatch.Infrastructure.Reviews;
@@ -45,6 +53,9 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(JwtSettings.SectionName))
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<JwtSettings>, JwtSettingsValidator>();
+
+        services.AddOptions<PriceTrackingOptions>()
+            .Bind(configuration.GetSection(PriceTrackingOptions.SectionName));
 
         var serverVersion = new MySqlServerVersion(new Version(8, 0, 36));
 
@@ -131,15 +142,33 @@ public static class DependencyInjection
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IFavoritesService, FavoritesService>();
         services.AddScoped<ICollectionsService, CollectionsService>();
+        services.AddScoped<IJournalService, JournalService>();
+        services.AddScoped<IWishlistService, WishlistService>();
+        services.AddScoped<IWardrobeService, WardrobeService>();
+        services.AddScoped<IBlindComparisonService, BlindComparisonService>();
+        services.AddScoped<ICollectionImportExportService, CollectionImportExportService>();
         services.AddScoped<IReviewService, ReviewService>();
         services.AddScoped<IViewHistoryService, ViewHistoryService>();
         services.AddScoped<ISelectionHistoryService, SelectionHistoryService>();
         services.AddScoped<IMatchingService, MatchingService>();
+        services.AddScoped<ISimilarityService, SimilarityService>();
+        services.AddScoped<ITextMatchingService, TextMatchingService>();
+        services.AddScoped<IGiftMatchingService, GiftMatchingService>();
+        services.AddScoped<ITextCriteriaEnricher, NullTextCriteriaEnricher>();
+        services.AddScoped<IPreferenceAnalyticsService, PreferenceAnalyticsService>();
         services.AddScoped<IRecommendationService, RecommendationService>();
         services.AddScoped<IRecommendationHistoryService, RecommendationHistoryService>();
         services.AddScoped<IComparisonService, ComparisonService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+        services.AddScoped<IPriceWatchService, PriceWatchService>();
+        services.AddSingleton<IPriceProvider, UnconfiguredPriceProvider>();
+        services.AddScoped<IAdminAuditService, AdminAuditService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<IAdminCatalogService, AdminCatalogService>();
+        services.AddScoped<IAdminJobsService, AdminJobsService>();
+        services.AddScoped<IAdminIntegrationsService, AdminIntegrationsService>();
+        services.AddHostedService<PriceWatchBackgroundService>();
 
         return services;
     }

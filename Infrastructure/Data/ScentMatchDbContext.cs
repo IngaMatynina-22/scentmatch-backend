@@ -32,6 +32,14 @@ public class ScentMatchDbContext
     public DbSet<RecommendationHistory> RecommendationHistory => Set<RecommendationHistory>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<ScentJournalEntry> ScentJournalEntries => Set<ScentJournalEntry>();
+    public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
+    public DbSet<PriceWatch> PriceWatches => Set<PriceWatch>();
+    public DbSet<PriceSnapshot> PriceSnapshots => Set<PriceSnapshot>();
+    public DbSet<BlindComparisonSession> BlindComparisonSessions => Set<BlindComparisonSession>();
+    public DbSet<BlindComparisonSlot> BlindComparisonSlots => Set<BlindComparisonSlot>();
+    public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>();
+    public DbSet<BackgroundJobLog> BackgroundJobLogs => Set<BackgroundJobLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -35,6 +35,7 @@ public class SelectionHistoryResultItemDto
 public class SelectionHistoryDto
 {
     public int Id { get; set; }
+    public string ScenarioType { get; set; } = "Personal";
     public int? SeasonId { get; set; }
     public int? FragranceTypeId { get; set; }
 

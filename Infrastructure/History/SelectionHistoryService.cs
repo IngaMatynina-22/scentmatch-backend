@@ -5,6 +5,7 @@ using ScentMatch.Application.Common.Models;
 using ScentMatch.Application.History.DTOs;
 using ScentMatch.Application.History.Interfaces;
 using ScentMatch.Application.Matching.DTOs;
+using ScentMatch.Domain.Constants;
 using ScentMatch.Domain.Entities;
 using ScentMatch.Infrastructure.Data;
 
@@ -30,7 +31,7 @@ public class SelectionHistoryService : ISelectionHistoryService
         await ValidateForeignKeysAsync(request, cancellationToken);
 
         var noteIds = NormalizeNoteIds(request.SelectedNoteIds);
-        var entity = BuildEntity(userId, request, noteIds, resultsJson: null);
+        var entity = BuildEntity(userId, request, noteIds, resultsJson: null, scenarioType: MatchingScenarioTypes.Personal);
 
         _dbContext.SelectionHistory.Add(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -38,12 +39,29 @@ public class SelectionHistoryService : ISelectionHistoryService
         return MapToDto(entity);
     }
 
+    public Task<SelectionHistoryDto> CreateFromMatchingAsync(
+        int userId,
+        MatchingRequest request,
+        IReadOnlyList<MatchingResultDto> results,
+        CancellationToken cancellationToken = default) =>
+        CreateFromMatchingAsync(
+            userId,
+            request,
+            results,
+            MatchingScenarioTypes.Personal,
+            cancellationToken);
+
     public async Task<SelectionHistoryDto> CreateFromMatchingAsync(
         int userId,
         MatchingRequest request,
         IReadOnlyList<MatchingResultDto> results,
+        string scenarioType,
         CancellationToken cancellationToken = default)
     {
+        var normalizedScenario = MatchingScenarioTypes.IsValid(scenarioType)
+            ? MatchingScenarioTypes.Normalize(scenarioType)
+            : MatchingScenarioTypes.Personal;
+
         var createRequest = new CreateSelectionHistoryRequest
         {
             SeasonId = request.SeasonId,
@@ -85,7 +103,8 @@ public class SelectionHistoryService : ISelectionHistoryService
             noteIds,
             resultsJson: resultItems.Count == 0
                 ? null
-                : JsonSerializer.Serialize(resultItems, JsonOptions));
+                : JsonSerializer.Serialize(resultItems, JsonOptions),
+            scenarioType: normalizedScenario);
 
         _dbContext.SelectionHistory.Add(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -165,7 +184,8 @@ public class SelectionHistoryService : ISelectionHistoryService
         int userId,
         CreateSelectionHistoryRequest request,
         IReadOnlyList<int> noteIds,
-        string? resultsJson) => new()
+        string? resultsJson,
+        string scenarioType) => new()
     {
         UserId = userId,
         SeasonId = request.SeasonId,
@@ -184,6 +204,7 @@ public class SelectionHistoryService : ISelectionHistoryService
         MaxPrice = request.MaxPrice,
         SelectedNoteIds = SerializeNoteIds(noteIds),
         ResultsJson = resultsJson,
+        ScenarioType = scenarioType,
         CreatedAt = DateTime.UtcNow
     };
 
@@ -269,6 +290,7 @@ public class SelectionHistoryService : ISelectionHistoryService
     private static SelectionHistoryDto MapToDto(SelectionHistory entity) => new()
     {
         Id = entity.Id,
+        ScenarioType = entity.ScenarioType,
         SeasonId = entity.SeasonId,
         FragranceTypeId = entity.FragranceTypeId,
         Sweetness = entity.Sweetness,

@@ -64,9 +64,50 @@ public class PerfumeService : IPerfumeService
         return CatalogMappings.ToDetailsDto(perfume);
     }
 
+    public async Task<BarcodeLookupResultDto> GetByBarcodeAsync(
+        string barcode,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(barcode) || !System.Text.RegularExpressions.Regex.IsMatch(barcode, @"^[0-9]{8,14}$"))
+        {
+            throw new BadRequestException("Barcode must contain 8 to 14 digits only.");
+        }
+
+        var normalized = barcode.Trim();
+
+        var matches = await QueryActivePerfumes()
+            .AsNoTracking()
+            .Where(x => x.Barcode == normalized)
+            .ToListAsync(cancellationToken);
+
+        if (matches.Count == 0)
+        {
+            return new BarcodeLookupResultDto
+            {
+                Status = BarcodeLookupStatuses.NotFound
+            };
+        }
+
+        if (matches.Count > 1)
+        {
+            return new BarcodeLookupResultDto
+            {
+                Status = BarcodeLookupStatuses.Ambiguous,
+                Matches = matches.Select(CatalogMappings.ToListItemDto).ToList()
+            };
+        }
+
+        return new BarcodeLookupResultDto
+        {
+            Status = BarcodeLookupStatuses.Found,
+            Perfume = CatalogMappings.ToDetailsDto(matches[0])
+        };
+    }
+
     public async Task<PerfumeDetailsDto> CreateAsync(CreatePerfumeRequest request, CancellationToken cancellationToken = default)
     {
         await ValidateRelationsAsync(request.BrandId, request.FragranceTypeId, request.Notes, request.Seasons, cancellationToken);
+        await EnsureBarcodeUniqueAsync(NormalizeBarcode(request.Barcode), null, cancellationToken);
 
         return await ExecuteInTransactionAsync(async () =>
         {
@@ -80,6 +121,10 @@ public class PerfumeService : IPerfumeService
                 Concentration = request.Concentration,
                 Gender = request.Gender,
                 Price = request.Price,
+                Currency = NormalizeCurrency(request.Currency),
+                VolumeMl = request.VolumeMl,
+                Intensity = request.Intensity,
+                Barcode = NormalizeBarcode(request.Barcode),
                 ImageUrl = request.ImageUrl,
                 Rating = 0,
                 ReviewsCount = 0,
@@ -117,6 +162,7 @@ public class PerfumeService : IPerfumeService
         }
 
         await ValidateRelationsAsync(request.BrandId, request.FragranceTypeId, request.Notes, request.Seasons, cancellationToken);
+        await EnsureBarcodeUniqueAsync(NormalizeBarcode(request.Barcode), id, cancellationToken);
 
         return await ExecuteInTransactionAsync(async () =>
         {
@@ -128,6 +174,10 @@ public class PerfumeService : IPerfumeService
             perfume.Concentration = request.Concentration;
             perfume.Gender = request.Gender;
             perfume.Price = request.Price;
+            perfume.Currency = NormalizeCurrency(request.Currency);
+            perfume.VolumeMl = request.VolumeMl;
+            perfume.Intensity = request.Intensity;
+            perfume.Barcode = NormalizeBarcode(request.Barcode);
             perfume.ImageUrl = request.ImageUrl;
             perfume.UpdatedAt = DateTime.UtcNow;
             CatalogMappings.ApplyCharacteristics(perfume, request.Characteristics);
@@ -420,6 +470,28 @@ public class PerfumeService : IPerfumeService
         }
 
         return NoteTypes.Base;
+    }
+
+    private static string? NormalizeCurrency(string? currency) =>
+        string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
+
+    private static string? NormalizeBarcode(string? barcode) =>
+        string.IsNullOrWhiteSpace(barcode) ? null : barcode.Trim();
+
+    private async Task EnsureBarcodeUniqueAsync(string? barcode, int? excludePerfumeId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(barcode))
+        {
+            return;
+        }
+
+        var exists = await _dbContext.Perfumes.AsNoTracking()
+            .AnyAsync(x => x.Barcode == barcode && (!excludePerfumeId.HasValue || x.Id != excludePerfumeId.Value), cancellationToken);
+
+        if (exists)
+        {
+            throw new ConflictException($"Barcode '{barcode}' is already assigned to another perfume.");
+        }
     }
 
     private async Task<T> ExecuteInTransactionAsync<T>(

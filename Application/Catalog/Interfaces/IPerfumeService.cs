@@ -10,6 +10,7 @@ public interface IPerfumeService
         CancellationToken cancellationToken = default);
 
     Task<PerfumeDetailsDto> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<BarcodeLookupResultDto> GetByBarcodeAsync(string barcode, CancellationToken cancellationToken = default);
     Task<PerfumeDetailsDto> CreateAsync(CreatePerfumeRequest request, CancellationToken cancellationToken = default);
     Task<PerfumeDetailsDto> UpdateAsync(int id, UpdatePerfumeRequest request, CancellationToken cancellationToken = default);
     Task DeleteAsync(int id, CancellationToken cancellationToken = default);

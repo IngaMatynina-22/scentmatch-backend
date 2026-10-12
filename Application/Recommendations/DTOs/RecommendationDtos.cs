@@ -1,3 +1,4 @@
+using ScentMatch.Application.Common.Scoring;
 using ScentMatch.Application.Matching.DTOs;
 
 namespace ScentMatch.Application.Recommendations.DTOs;
@@ -11,6 +12,11 @@ public class RecommendationDto
     public decimal Score { get; set; }
     public IReadOnlyList<string> Reasons { get; set; } = Array.Empty<string>();
 
+    public IReadOnlyList<ScoreComponent> Components { get; set; } = Array.Empty<ScoreComponent>();
+    public IReadOnlyList<string> PositiveReasons { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> MismatchReasons { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> DataGaps { get; set; } = Array.Empty<string>();
+
     public static RecommendationDto FromMatching(MatchingResultDto item) => new()
     {
         PerfumeId = item.PerfumeId,
@@ -18,7 +24,11 @@ public class RecommendationDto
         BrandName = item.BrandName,
         Price = item.Price,
         Score = item.Score,
-        Reasons = item.Reasons
+        Reasons = item.Reasons.Count > 0 ? item.Reasons : item.PositiveReasons,
+        Components = item.Components,
+        PositiveReasons = item.PositiveReasons.Count > 0 ? item.PositiveReasons : item.Reasons,
+        MismatchReasons = item.MismatchReasons,
+        DataGaps = item.DataGaps
     };
 }
 

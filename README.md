@@ -48,6 +48,10 @@ Do **not** commit real production secrets.
 | `Jwt:Key` | JWT signing key (**min 32 characters**) |
 | `Jwt:Issuer` / `Jwt:Audience` | Token validation |
 | `Cors:Origins` | Allowed frontend origins |
+| `PriceTracking:Enabled` | Background price-check job (`false` by default) |
+| `PriceTracking:CheckIntervalMinutes` | Interval between price-check runs |
+
+See [`.env.example`](.env.example) for environment-variable names (no real secrets).
 
 ### Local development
 
@@ -145,21 +149,41 @@ Admin catalog/moderation routes require role `Admin`.
 | Area | Base routes |
 | --- | --- |
 | Catalog | `/api/perfumes`, `/api/brands`, `/api/notes`, `/api/seasons`, `/api/fragrance-types` |
-| Admin catalog | `/api/admin/*` |
+| Similar / barcode | `GET /api/perfumes/{id}/similar`, `GET /api/perfumes/by-barcode/{barcode}` |
+| Admin | `/api/admin/*` (CRUD, dashboard, catalog quality/duplicates/import, audit, jobs, integrations) |
 | Profile | `/api/profile`, `/api/profile/preferences` |
-| Favorites / Collections | `/api/favorites`, `/api/collections` |
-| Reviews | `/api/perfumes/{id}/reviews`, `/api/reviews/mine`, `/api/reviews`, `/api/admin/reviews` |
+| Favorites / Collections / Wardrobe | `/api/favorites`, `/api/collections`, `/api/wardrobe` |
+| Wishlist | `/api/wishlist` (purchase intent; separate from favorites) |
+| Journal | `/api/journal` (private scent testing diary) |
+| Blind comparison | `/api/blind-comparison` |
+| Reviews | `/api/perfumes/{id}/reviews`, `/api/reviews/mine`, `/api/admin/reviews` |
 | History | `/api/history/views`, `/api/history/selections`, `/api/history/recommendations` |
-| Matching | `POST /api/matching` (also stores selection history + top results) |
-| Recommendations | `/api/recommendations` (preferences + favorites + approved ratings) |
-| Comparison | `POST /api/comparison` (items + common/diff analysis) |
-| Notifications | `/api/notifications` (auto-created on catalog/review/recommendation events) |
+| Matching | `POST /api/matching`, `/api/matching/text`, `/api/matching/gift` |
+| Analytics | `/api/analytics/preferences`, `/api/analytics/personalization/reset` |
+| Recommendations | `/api/recommendations` (transparent score breakdown) |
+| Comparison | `POST /api/comparison` |
+| Price watches | `/api/price-watches` |
+| Notifications | `/api/notifications` |
 
-See [docs/API.en.md](docs/API.en.md) / [docs/API.uk.md](docs/API.uk.md) for the full route reference.
+See [docs/API.en.md](docs/API.en.md) / [docs/API.uk.md](docs/API.uk.md) and [docs/PLATFORM.md](docs/PLATFORM.md) for contracts and formulas.
+
+## Background jobs
+
+| Job | Config | Behavior |
+| --- | --- | --- |
+| `PriceWatchBackgroundService` | `PriceTracking:Enabled` | Checks active watches via `IPriceProvider`. Default provider is **unconfigured** (no invented prices). Writes `background_job_logs` and `PriceDrop` notifications when a real provider reports a drop. |
+
+## Limitations
+
+- External price scraping / LLM text enrichment are **optional** and off by default (`UnconfiguredPriceProvider`, `NullTextCriteriaEnricher`).
+- Score values are **relative match scores (0–100)**, not calibrated purchase probabilities.
+- Blind-comparison identity mapping is revealed only after session completion.
+- Admin APIs never expose private journal notes or auth secrets.
 
 ## Notes
 
 - Public catalog endpoints are anonymous; personal features require JWT.
 - Review ratings on perfumes use **Approved** reviews only.
-- Matching / recommendations reuse the same weighted scoring service.
-- Live MySQL verification is separate from `dotnet test`.
+- Matching / recommendations / similarity share `PerfumeScoring` + `PerfumeProfile` (null ≠ zero).
+- Gift matching history uses `ScenarioType=Gift` and is excluded from personalization.
+- Live MySQL verification is separate from `dotnet test` (194 tests use InMemory).

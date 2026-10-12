@@ -17,6 +17,13 @@ public interface ISelectionHistoryService
         IReadOnlyList<MatchingResultDto> results,
         CancellationToken cancellationToken = default);
 
+    Task<SelectionHistoryDto> CreateFromMatchingAsync(
+        int userId,
+        MatchingRequest request,
+        IReadOnlyList<MatchingResultDto> results,
+        string scenarioType,
+        CancellationToken cancellationToken = default);
+
     Task<PagedResult<SelectionHistoryDto>> GetAsync(
         int userId,
         PaginationQuery pagination,

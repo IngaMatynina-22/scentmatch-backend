@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ScentMatch.Application.Common.Exceptions;
@@ -13,11 +15,21 @@ namespace ScentMatch.API.Controllers;
 [Authorize]
 public class CollectionsController : ControllerBase
 {
-    private readonly ICollectionsService _collectionsService;
+    private static readonly JsonSerializerOptions ImportJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
-    public CollectionsController(ICollectionsService collectionsService)
+    private readonly ICollectionsService _collectionsService;
+    private readonly ICollectionImportExportService _importExportService;
+
+    public CollectionsController(
+        ICollectionsService collectionsService,
+        ICollectionImportExportService importExportService)
     {
         _collectionsService = collectionsService;
+        _importExportService = importExportService;
     }
 
     [HttpGet]
@@ -28,6 +40,93 @@ public class CollectionsController : ControllerBase
     {
         var userId = GetCurrentUserId();
         return Ok(await _collectionsService.GetCollectionsAsync(userId, pagination, cancellationToken));
+    }
+
+    [HttpGet("export")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Export(
+        [FromQuery] string format = "json",
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        var (content, contentType, fileName) =
+            await _importExportService.ExportAsync(userId, format, cancellationToken);
+        return File(Encoding.UTF8.GetBytes(content), contentType, fileName);
+    }
+
+    [HttpPost("import")]
+    [RequestSizeLimit(CollectionImportLimits.MaxFileBytes)]
+    [ProducesResponseType(typeof(CollectionImportResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<CollectionImportResult>> Import(
+        [FromQuery] bool preview = false,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+
+        if (Request.HasFormContentType)
+        {
+            var file = Request.Form.Files.FirstOrDefault();
+            if (file is null || file.Length == 0)
+            {
+                throw new BadRequestException("A file is required for multipart import.");
+            }
+
+            if (file.Length > CollectionImportLimits.MaxFileBytes)
+            {
+                throw new BadRequestException(
+                    $"File must be at most {CollectionImportLimits.MaxFileBytes} bytes.");
+            }
+
+            var fileName = file.FileName ?? string.Empty;
+            await using var stream = file.OpenReadStream();
+
+            if (fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(file.ContentType, "text/csv", StringComparison.OrdinalIgnoreCase))
+            {
+                return Ok(await _importExportService.ImportCsvAsync(
+                    userId, stream, preview, cancellationToken));
+            }
+
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            var json = await reader.ReadToEndAsync(cancellationToken);
+            var document = JsonSerializer.Deserialize<CollectionExportDocument>(json, ImportJsonOptions)
+                ?? throw new BadRequestException("Invalid JSON import payload.");
+            return Ok(await _importExportService.ImportJsonAsync(
+                userId, document, preview, cancellationToken));
+        }
+
+        using var bodyReader = new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        var body = await bodyReader.ReadToEndAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            throw new BadRequestException("Import body is required.");
+        }
+
+        var trimmed = body.TrimStart();
+        if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
+        {
+            CollectionExportDocument document;
+            if (trimmed.StartsWith('['))
+            {
+                var items = JsonSerializer.Deserialize<List<CollectionExportItem>>(body, ImportJsonOptions)
+                    ?? throw new BadRequestException("Invalid JSON import payload.");
+                document = new CollectionExportDocument { Collections = items };
+            }
+            else
+            {
+                document = JsonSerializer.Deserialize<CollectionExportDocument>(body, ImportJsonOptions)
+                    ?? throw new BadRequestException("Invalid JSON import payload.");
+            }
+
+            return Ok(await _importExportService.ImportJsonAsync(
+                userId, document, preview, cancellationToken));
+        }
+
+        await using var csvStream = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        return Ok(await _importExportService.ImportCsvAsync(
+            userId, csvStream, preview, cancellationToken));
     }
 
     [HttpGet("{id:int}")]

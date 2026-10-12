@@ -13,6 +13,9 @@ internal static class MatchingWeights
     public const decimal FragranceType = 15m;
     public const decimal Notes = 20m;
     public const decimal Price = 15m;
+    public const decimal Intensity = 10m;
+    public const decimal Concentration = 8m;
+    public const decimal Gender = 8m;
 
     /// <summary>Maximum number of ranked results returned by the matching engine.</summary>
     public const int MaxResults = 50;

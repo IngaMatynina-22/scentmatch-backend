@@ -17,6 +17,7 @@ public class UserPreferencesConfiguration : IEntityTypeConfiguration<UserPrefere
         builder.Property(x => x.MinPrice).HasPrecision(10, 2);
         builder.Property(x => x.MaxPrice).HasPrecision(10, 2);
         builder.Property(x => x.PreferredNoteIds).HasMaxLength(1000);
+        builder.Property(x => x.UseBehavioralSignals).HasDefaultValue(true);
 
         builder.HasOne(x => x.PreferredSeason)
             .WithMany(x => x.UserPreferences)

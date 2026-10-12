@@ -16,6 +16,9 @@ public class CollectionConfiguration : IEntityTypeConfiguration<Collection>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(x => x.ScenarioKey).HasMaxLength(50);
+        builder.HasIndex(x => new { x.UserId, x.ScenarioKey });
+
         builder.HasOne(x => x.User)
             .WithMany(x => x.Collections)
             .HasForeignKey(x => x.UserId)

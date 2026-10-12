@@ -25,6 +25,13 @@ public class CreatePerfumeRequestValidator : AbstractValidator<CreatePerfumeRequ
 
         RuleFor(x => x.Concentration).MaximumLength(50).When(x => x.Concentration is not null);
         RuleFor(x => x.Gender).MaximumLength(50).When(x => x.Gender is not null);
+        RuleFor(x => x.Currency).MaximumLength(3).When(x => x.Currency is not null);
+        RuleFor(x => x.VolumeMl).GreaterThan(0).When(x => x.VolumeMl.HasValue);
+        RuleFor(x => x.Intensity).InclusiveBetween(0, 100).When(x => x.Intensity.HasValue);
+        RuleFor(x => x.Barcode)
+            .MaximumLength(32)
+            .Matches(@"^[0-9]{8,14}$")
+            .When(x => !string.IsNullOrWhiteSpace(x.Barcode));
         RuleFor(x => x.ImageUrl).MaximumLength(1000).When(x => x.ImageUrl is not null);
 
         RuleFor(x => x.Characteristics!).SetValidator(new PerfumeCharacteristicsDtoValidator())
@@ -65,6 +72,13 @@ public class UpdatePerfumeRequestValidator : AbstractValidator<UpdatePerfumeRequ
 
         RuleFor(x => x.Concentration).MaximumLength(50).When(x => x.Concentration is not null);
         RuleFor(x => x.Gender).MaximumLength(50).When(x => x.Gender is not null);
+        RuleFor(x => x.Currency).MaximumLength(3).When(x => x.Currency is not null);
+        RuleFor(x => x.VolumeMl).GreaterThan(0).When(x => x.VolumeMl.HasValue);
+        RuleFor(x => x.Intensity).InclusiveBetween(0, 100).When(x => x.Intensity.HasValue);
+        RuleFor(x => x.Barcode)
+            .MaximumLength(32)
+            .Matches(@"^[0-9]{8,14}$")
+            .When(x => !string.IsNullOrWhiteSpace(x.Barcode));
         RuleFor(x => x.ImageUrl).MaximumLength(1000).When(x => x.ImageUrl is not null);
 
         RuleFor(x => x.Characteristics!).SetValidator(new PerfumeCharacteristicsDtoValidator())

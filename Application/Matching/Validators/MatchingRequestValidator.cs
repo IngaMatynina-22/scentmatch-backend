@@ -48,6 +48,18 @@ public class MatchingRequestValidator : AbstractValidator<MatchingRequest>
             .WithMessage("minPrice must be less than or equal to maxPrice.")
             .WithName("minPrice");
 
+        RuleFor(x => x.Intensity)
+            .InclusiveBetween(0, 100)
+            .When(x => x.Intensity.HasValue);
+
+        RuleFor(x => x.Concentration)
+            .MaximumLength(50)
+            .When(x => x.Concentration is not null);
+
+        RuleFor(x => x.Gender)
+            .MaximumLength(30)
+            .When(x => x.Gender is not null);
+
         RuleFor(x => x.SelectedNoteIds)
             .Must(ids => ids!.Count <= MaxSelectedNotes)
             .When(x => x.SelectedNoteIds is not null)
@@ -61,6 +73,20 @@ public class MatchingRequestValidator : AbstractValidator<MatchingRequest>
         RuleForEach(x => x.SelectedNoteIds)
             .GreaterThan(0)
             .When(x => x.SelectedNoteIds is not null);
+
+        RuleFor(x => x.ExcludedNoteIds)
+            .Must(ids => ids!.Count <= MaxSelectedNotes)
+            .When(x => x.ExcludedNoteIds is not null)
+            .WithMessage($"excludedNoteIds must contain at most {MaxSelectedNotes} items.");
+
+        RuleFor(x => x.ExcludedNoteIds)
+            .Must(ids => ids!.Distinct().Count() == ids.Count)
+            .When(x => x.ExcludedNoteIds is not null)
+            .WithMessage("excludedNoteIds must not contain duplicates.");
+
+        RuleForEach(x => x.ExcludedNoteIds)
+            .GreaterThan(0)
+            .When(x => x.ExcludedNoteIds is not null);
     }
 
     private static bool HasAtLeastOneCriterion(MatchingRequest request)
@@ -69,7 +95,11 @@ public class MatchingRequestValidator : AbstractValidator<MatchingRequest>
                || request.FragranceTypeId.HasValue
                || request.MinPrice.HasValue
                || request.MaxPrice.HasValue
+               || request.Intensity.HasValue
+               || !string.IsNullOrWhiteSpace(request.Concentration)
+               || !string.IsNullOrWhiteSpace(request.Gender)
                || (request.SelectedNoteIds is { Count: > 0 })
+               || (request.ExcludedNoteIds is { Count: > 0 })
                || request.Sweetness.HasValue
                || request.Freshness.HasValue
                || request.Woody.HasValue

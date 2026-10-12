@@ -11,6 +11,14 @@ public class Perfume
     public string? Concentration { get; set; }
     public string? Gender { get; set; }
     public decimal? Price { get; set; }
+    /// <summary>ISO 4217 currency for catalog Price. Null means currency unknown, not zero.</summary>
+    public string? Currency { get; set; }
+    /// <summary>Bottle volume in milliliters when known.</summary>
+    public decimal? VolumeMl { get; set; }
+    /// <summary>Overall intensity 0–100. Null means unknown, not zero intensity.</summary>
+    public int? Intensity { get; set; }
+    /// <summary>Unique product barcode (EAN/UPC) when assigned.</summary>
+    public string? Barcode { get; set; }
     public string? ImageUrl { get; set; }
     public decimal Rating { get; set; }
     public int ReviewsCount { get; set; }
@@ -41,4 +49,8 @@ public class Perfume
     public ICollection<ViewHistory> ViewHistory { get; set; } = new List<ViewHistory>();
     public ICollection<RecommendationHistory> RecommendationHistory { get; set; } = new List<RecommendationHistory>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+    public ICollection<ScentJournalEntry> ScentJournalEntries { get; set; } = new List<ScentJournalEntry>();
+    public ICollection<WishlistItem> WishlistItems { get; set; } = new List<WishlistItem>();
+    public ICollection<PriceWatch> PriceWatches { get; set; } = new List<PriceWatch>();
+    public ICollection<PriceSnapshot> PriceSnapshots { get; set; } = new List<PriceSnapshot>();
 }

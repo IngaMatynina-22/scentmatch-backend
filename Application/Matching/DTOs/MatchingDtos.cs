@@ -1,3 +1,5 @@
+using ScentMatch.Application.Common.Scoring;
+
 namespace ScentMatch.Application.Matching.DTOs;
 
 public class MatchingRequest
@@ -19,7 +21,12 @@ public class MatchingRequest
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
 
+    public int? Intensity { get; set; }
+    public string? Concentration { get; set; }
+    public string? Gender { get; set; }
+
     public IReadOnlyList<int>? SelectedNoteIds { get; set; }
+    public IReadOnlyList<int>? ExcludedNoteIds { get; set; }
 }
 
 public class MatchingResultDto
@@ -30,6 +37,11 @@ public class MatchingResultDto
     public decimal? Price { get; set; }
     public decimal Score { get; set; }
     public IReadOnlyList<string> Reasons { get; set; } = Array.Empty<string>();
+
+    public IReadOnlyList<ScoreComponent> Components { get; set; } = Array.Empty<ScoreComponent>();
+    public IReadOnlyList<string> PositiveReasons { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> MismatchReasons { get; set; } = Array.Empty<string>();
+    public IReadOnlyList<string> DataGaps { get; set; } = Array.Empty<string>();
 }
 
 public class MatchingResponse

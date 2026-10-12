@@ -3,6 +3,7 @@ using ScentMatch.Application.Common.Exceptions;
 using ScentMatch.Application.Common.Models;
 using ScentMatch.Application.Library.DTOs;
 using ScentMatch.Application.Library.Interfaces;
+using ScentMatch.Domain.Constants;
 using ScentMatch.Domain.Entities;
 using ScentMatch.Infrastructure.Catalog;
 using ScentMatch.Infrastructure.Data;
@@ -39,6 +40,7 @@ public class CollectionsService : ICollectionsService
                 Id = x.Id,
                 Name = x.Name,
                 Description = x.Description,
+                ScenarioKey = x.ScenarioKey,
                 PerfumeCount = x.CollectionPerfumes.Count(cp => cp.Perfume.IsActive && cp.Perfume.Brand.IsActive),
                 CreatedAt = x.CreatedAt,
                 UpdatedAt = x.UpdatedAt
@@ -60,6 +62,7 @@ public class CollectionsService : ICollectionsService
                 x.Id,
                 x.Name,
                 x.Description,
+                x.ScenarioKey,
                 x.CreatedAt,
                 x.UpdatedAt
             })
@@ -97,6 +100,7 @@ public class CollectionsService : ICollectionsService
             Id = collection.Id,
             Name = collection.Name,
             Description = collection.Description,
+            ScenarioKey = collection.ScenarioKey,
             PerfumeCount = perfumeDtos.Count,
             Perfumes = perfumeDtos,
             CreatedAt = collection.CreatedAt,
@@ -114,6 +118,7 @@ public class CollectionsService : ICollectionsService
             UserId = userId,
             Name = request.Name.Trim(),
             Description = NormalizeOptional(request.Description),
+            ScenarioKey = NormalizeScenarioKey(request.ScenarioKey),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -125,6 +130,7 @@ public class CollectionsService : ICollectionsService
             Id = collection.Id,
             Name = collection.Name,
             Description = collection.Description,
+            ScenarioKey = collection.ScenarioKey,
             PerfumeCount = 0,
             CreatedAt = collection.CreatedAt,
             UpdatedAt = collection.UpdatedAt
@@ -147,6 +153,7 @@ public class CollectionsService : ICollectionsService
 
         collection.Name = request.Name.Trim();
         collection.Description = NormalizeOptional(request.Description);
+        collection.ScenarioKey = NormalizeScenarioKey(request.ScenarioKey);
         collection.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -163,6 +170,7 @@ public class CollectionsService : ICollectionsService
             Id = collection.Id,
             Name = collection.Name,
             Description = collection.Description,
+            ScenarioKey = collection.ScenarioKey,
             PerfumeCount = perfumeCount,
             CreatedAt = collection.CreatedAt,
             UpdatedAt = collection.UpdatedAt
@@ -267,5 +275,12 @@ public class CollectionsService : ICollectionsService
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string? NormalizeScenarioKey(string? scenarioKey)
+    {
+        return string.IsNullOrWhiteSpace(scenarioKey)
+            ? null
+            : WardrobeScenarios.Normalize(scenarioKey);
     }
 }

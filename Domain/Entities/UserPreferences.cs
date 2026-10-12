@@ -26,6 +26,12 @@ public class UserPreferences
     /// </summary>
     public string? PreferredNoteIds { get; set; }
 
+    /// <summary>When true, behavioral signals (favorites, ratings, journal) influence recommendations.</summary>
+    public bool UseBehavioralSignals { get; set; } = true;
+
+    /// <summary>UTC timestamp of last personalization reset (behavioral signals ignored before this).</summary>
+    public DateTime? PersonalizationResetAt { get; set; }
+
     public DateTime? UpdatedAt { get; set; }
 
     public User User { get; set; } = null!;

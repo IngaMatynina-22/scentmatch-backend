@@ -18,7 +18,10 @@ public class PerfumeConfiguration : IEntityTypeConfiguration<Perfume>
 
         builder.Property(x => x.Concentration).HasMaxLength(50);
         builder.Property(x => x.Gender).HasMaxLength(50);
+        builder.Property(x => x.Currency).HasMaxLength(3);
+        builder.Property(x => x.Barcode).HasMaxLength(32);
         builder.Property(x => x.ImageUrl).HasMaxLength(1000);
+        builder.Property(x => x.VolumeMl).HasPrecision(8, 2);
 
         builder.Property(x => x.Price).HasPrecision(10, 2);
         builder.Property(x => x.Rating)
@@ -36,6 +39,7 @@ public class PerfumeConfiguration : IEntityTypeConfiguration<Perfume>
         builder.HasIndex(x => x.FragranceTypeId);
         builder.HasIndex(x => x.Price);
         builder.HasIndex(x => x.Rating);
+        builder.HasIndex(x => x.Barcode).IsUnique();
 
         builder.HasOne(x => x.Brand)
             .WithMany(x => x.Perfumes)

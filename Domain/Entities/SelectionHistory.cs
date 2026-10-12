@@ -28,6 +28,9 @@ public class SelectionHistory
     /// </summary>
     public string? ResultsJson { get; set; }
 
+    /// <summary>Personal, Gift, or Text — keeps gift searches out of personal preference inference.</summary>
+    public string ScenarioType { get; set; } = "Personal";
+
     public DateTime? CreatedAt { get; set; }
 
     public User User { get; set; } = null!;

@@ -673,14 +673,46 @@ dotnet test
 
 ---
 
-## 12. Примітки для фронтенду
+## 12. Нові модулі платформи
+
+Детальні формули: [PLATFORM.md](PLATFORM.md).
+
+| Метод | Маршрут | Доступ | Призначення |
+| --- | --- | --- | --- |
+| GET | `/api/perfumes/{id}/similar` | Anonymous | Схожі аромати + breakdown |
+| GET | `/api/perfumes/by-barcode/{barcode}` | Anonymous | Пошук за штрихкодом |
+| POST | `/api/matching/text` | User | Текстовий підбір (UA/EN) |
+| POST | `/api/matching/gift` | Anonymous/User | Підбір подарунка |
+| GET | `/api/analytics/preferences` | User | Персональна статистика |
+| POST | `/api/analytics/personalization/reset` | User | Скидання поведінкової персоналізації |
+| CRUD | `/api/journal` | User | Щоденник тестування |
+| * | `/api/wardrobe*` | User | Гардероб за сценаріями |
+| CRUD | `/api/wishlist` | User | Список бажань |
+| * | `/api/blind-comparison*` | User | Сліпе порівняння |
+| GET/POST | `/api/collections/export`, `/import` | User | Експорт/імпорт колекцій |
+| CRUD | `/api/price-watches` | User | Підписки на ціну |
+| GET | `/api/admin/dashboard` | Admin | Агрегована аналітика |
+| GET | `/api/admin/catalog/quality` | Admin | Якість каталогу |
+| GET | `/api/admin/catalog/duplicates` | Admin | Потенційні дублікати |
+| POST | `/api/admin/catalog/import` | Admin | Масовий імпорт |
+| GET | `/api/admin/audit-logs` | Admin | Журнал дій |
+| GET | `/api/admin/jobs` | Admin | Фонові задачі |
+| GET | `/api/admin/integrations` | Admin | Статус інтеграцій |
+
+Perfume DTO також містить `currency`, `volumeMl`, `intensity`, `barcode` (nullable).
+
+---
+
+## 13. Примітки для фронтенду
 
 1. Зберігайте `accessToken` + `refreshToken`; оновлюйте пару через `/api/auth/refresh`.
 2. Для Swagger у Development вставляйте access token у Authorize.
 3. Порівняння: використовуйте `analysis` для підсвітки спільних/відмінних полів.
-4. Рекомендації: показуйте `reasons[]` як пояснення «чому рекомендовано».
-5. Сповіщення: періодичний polling `unread-count` + список.
+4. Рекомендації: показуйте `reasons[]` / `scoreComponents` як пояснення (це не ймовірність «сподобається»).
+5. Сповіщення: періодичний polling `unread-count` + список; новий тип `PriceDrop`.
 6. Після seed можна одразу логінитись демо-акаунтами (див. [розділ 4](#4-seed-бази-даних)).
+7. Wishlist ≠ Favorites. Wardrobe = collections + `scenarioKey`.
+8. Blind comparison: до `complete` не показуйте назви/бренди — API їх не віддає.
 
 ---
 

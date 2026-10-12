@@ -5,6 +5,8 @@ using ScentMatch.Application.Catalog.DTOs;
 using ScentMatch.Application.Catalog.Interfaces;
 using ScentMatch.Application.Common.Models;
 using ScentMatch.Application.History.Interfaces;
+using ScentMatch.Application.Matching.DTOs;
+using ScentMatch.Application.Matching.Interfaces;
 
 namespace ScentMatch.API.Controllers;
 
@@ -15,13 +17,16 @@ public class PerfumesController : ControllerBase
 {
     private readonly IPerfumeService _perfumeService;
     private readonly IViewHistoryService _viewHistoryService;
+    private readonly ISimilarityService _similarityService;
 
     public PerfumesController(
         IPerfumeService perfumeService,
-        IViewHistoryService viewHistoryService)
+        IViewHistoryService viewHistoryService,
+        ISimilarityService similarityService)
     {
         _perfumeService = perfumeService;
         _viewHistoryService = viewHistoryService;
+        _similarityService = similarityService;
     }
 
     /// <summary>
@@ -50,6 +55,22 @@ public class PerfumesController : ControllerBase
         }
 
         return Ok(details);
+    }
+
+    /// <summary>
+    /// Similar perfumes ranked by shared scoring (notes, type, seasons, characteristics, intensity, price).
+    /// Use <c>limit</c> for a simple top-N list, or <c>page</c>/<c>pageSize</c> for pagination.
+    /// </summary>
+    [HttpGet("{id:int}/similar")]
+    [ProducesResponseType(typeof(PagedResult<SimilarPerfumeDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PagedResult<SimilarPerfumeDto>>> GetSimilar(
+        int id,
+        [FromQuery] SimilarPerfumesQuery query,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _similarityService.GetSimilarAsync(id, query, cancellationToken));
     }
 
     private bool TryGetCurrentUserId(out int userId)

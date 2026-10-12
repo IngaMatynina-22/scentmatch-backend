@@ -1,5 +1,8 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ScentMatch.Application.Admin.Interfaces;
+using ScentMatch.Application.Common.Exceptions;
 using ScentMatch.Application.Common.Models;
 using ScentMatch.Application.Reviews.DTOs;
 using ScentMatch.Application.Reviews.Interfaces;
@@ -13,10 +16,12 @@ namespace ScentMatch.API.Controllers.Admin;
 public class AdminReviewsController : ControllerBase
 {
     private readonly IReviewService _reviewService;
+    private readonly IAdminAuditService _auditService;
 
-    public AdminReviewsController(IReviewService reviewService)
+    public AdminReviewsController(IReviewService reviewService, IAdminAuditService auditService)
     {
         _reviewService = reviewService;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -34,7 +39,14 @@ public class AdminReviewsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<AdminReviewDto>> Approve(int id, CancellationToken cancellationToken)
     {
-        return Ok(await _reviewService.ApproveAsync(id, cancellationToken));
+        var result = await _reviewService.ApproveAsync(id, cancellationToken);
+        await _auditService.LogAsync(
+            GetCurrentUserId(),
+            "ApproveReview",
+            "Review",
+            id.ToString(),
+            cancellationToken: cancellationToken);
+        return Ok(result);
     }
 
     [HttpPut("{id:int}/reject")]
@@ -42,7 +54,14 @@ public class AdminReviewsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<AdminReviewDto>> Reject(int id, CancellationToken cancellationToken)
     {
-        return Ok(await _reviewService.RejectAsync(id, cancellationToken));
+        var result = await _reviewService.RejectAsync(id, cancellationToken);
+        await _auditService.LogAsync(
+            GetCurrentUserId(),
+            "RejectReview",
+            "Review",
+            id.ToString(),
+            cancellationToken: cancellationToken);
+        return Ok(result);
     }
 
     [HttpDelete("{id:int}")]
@@ -51,6 +70,25 @@ public class AdminReviewsController : ControllerBase
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         await _reviewService.AdminDeleteAsync(id, cancellationToken);
+        await _auditService.LogAsync(
+            GetCurrentUserId(),
+            "DeleteReview",
+            "Review",
+            id.ToString(),
+            cancellationToken: cancellationToken);
         return NoContent();
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            throw new UnauthorizedException("User identity is invalid.");
+        }
+
+        return userId;
     }
 }

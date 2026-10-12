@@ -9,6 +9,7 @@ public static class NotificationTypes
     public const string NewPerfume = "NewPerfume";
     public const string RatingChanged = "RatingChanged";
     public const string CatalogUpdate = "CatalogUpdate";
+    public const string PriceDrop = "PriceDrop";
 
     public static readonly HashSet<string> All = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -18,7 +19,8 @@ public static class NotificationTypes
         Info,
         NewPerfume,
         RatingChanged,
-        CatalogUpdate
+        CatalogUpdate,
+        PriceDrop
     };
 
     public static bool IsValid(string? type) =>

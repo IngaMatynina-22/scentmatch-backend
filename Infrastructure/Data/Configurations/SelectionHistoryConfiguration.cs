@@ -15,6 +15,11 @@ public class SelectionHistoryConfiguration : IEntityTypeConfiguration<SelectionH
         builder.Property(x => x.MinPrice).HasPrecision(10, 2);
         builder.Property(x => x.MaxPrice).HasPrecision(10, 2);
         builder.Property(x => x.ResultsJson).HasColumnType("longtext");
+        builder.Property(x => x.ScenarioType)
+            .IsRequired()
+            .HasMaxLength(30)
+            .HasDefaultValue("Personal");
+        builder.HasIndex(x => new { x.UserId, x.ScenarioType });
 
         builder.HasOne(x => x.User)
             .WithMany(x => x.SelectionHistory)

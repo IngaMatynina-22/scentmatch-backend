@@ -89,10 +89,19 @@ public class MatchingEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         var token = await RegisterAsync();
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
-        var close = await CreatePerfumeAsync(admin, $"Close_{suffix}", sweetness: 50, freshness: 50, price: 1000);
-        var far = await CreatePerfumeAsync(admin, $"Far_{suffix}", sweetness: 10, freshness: 10, price: 1000);
+        // Unique notes keep these candidates inside MaxResults even when the shared fixture is crowded.
+        var note = await CreateNoteAsync(admin, $"CloseN_{suffix}");
+        var close = await CreatePerfumeAsync(
+            admin, $"Close_{suffix}", sweetness: 50, freshness: 50, price: 1000, noteIds: [note.Id]);
+        var far = await CreatePerfumeAsync(
+            admin, $"Far_{suffix}", sweetness: 10, freshness: 10, price: 1000, noteIds: [note.Id]);
 
-        var requestBody = new MatchingRequest { Sweetness = 50, Freshness = 50 };
+        var requestBody = new MatchingRequest
+        {
+            Sweetness = 50,
+            Freshness = 50,
+            SelectedNoteIds = [note.Id]
+        };
 
         var first = await MatchAsync(token, requestBody);
         var second = await MatchAsync(token, requestBody);
@@ -220,11 +229,16 @@ public class MatchingEndpointsTests : IClassFixture<CustomWebApplicationFactory>
         var token = await RegisterAsync();
         var suffix = Guid.NewGuid().ToString("N")[..8];
 
-        await CreatePerfumeAsync(admin, $"B_{suffix}", sweetness: 50, price: 100);
-        await CreatePerfumeAsync(admin, $"A_{suffix}", sweetness: 50, price: 100);
-        await CreatePerfumeAsync(admin, $"C_{suffix}", sweetness: 10, price: 100);
+        var note = await CreateNoteAsync(admin, $"SortN_{suffix}");
+        await CreatePerfumeAsync(admin, $"B_{suffix}", sweetness: 50, price: 100, noteIds: [note.Id]);
+        await CreatePerfumeAsync(admin, $"A_{suffix}", sweetness: 50, price: 100, noteIds: [note.Id]);
+        await CreatePerfumeAsync(admin, $"C_{suffix}", sweetness: 10, price: 100, noteIds: [note.Id]);
 
-        var result = await MatchAsync(token, new MatchingRequest { Sweetness = 50 });
+        var result = await MatchAsync(token, new MatchingRequest
+        {
+            Sweetness = 50,
+            SelectedNoteIds = [note.Id]
+        });
         var relevant = result.Items
             .Where(x => x.Name.EndsWith(suffix, StringComparison.Ordinal))
             .ToList();

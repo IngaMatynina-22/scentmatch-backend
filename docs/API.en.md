@@ -673,14 +673,46 @@ Tests use InMemory and do **not** fully reproduce MySQL unique constraints, SQL 
 
 ---
 
-## 12. Frontend integration notes
+## 12. Platform expansion modules
+
+Formulas and limitations: [PLATFORM.md](PLATFORM.md).
+
+| Method | Route | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/perfumes/{id}/similar` | Anonymous | Similar scents + score breakdown |
+| GET | `/api/perfumes/by-barcode/{barcode}` | Anonymous | Barcode lookup |
+| POST | `/api/matching/text` | User | Natural-language matching (UA/EN) |
+| POST | `/api/matching/gift` | Anonymous/User | Gift matching |
+| GET | `/api/analytics/preferences` | User | Personal preference analytics |
+| POST | `/api/analytics/personalization/reset` | User | Reset behavioral personalization |
+| CRUD | `/api/journal` | User | Private scent test journal |
+| * | `/api/wardrobe*` | User | Wardrobe by scenario |
+| CRUD | `/api/wishlist` | User | Purchase wishlist |
+| * | `/api/blind-comparison*` | User | Blind comparison sessions |
+| GET/POST | `/api/collections/export`, `/import` | User | Collection import/export |
+| CRUD | `/api/price-watches` | User | Price-drop subscriptions |
+| GET | `/api/admin/dashboard` | Admin | Aggregated dashboard |
+| GET | `/api/admin/catalog/quality` | Admin | Catalog quality report |
+| GET | `/api/admin/catalog/duplicates` | Admin | Potential duplicates |
+| POST | `/api/admin/catalog/import` | Admin | Bulk catalog import |
+| GET | `/api/admin/audit-logs` | Admin | Admin audit log |
+| GET | `/api/admin/jobs` | Admin | Background job monitoring |
+| GET | `/api/admin/integrations` | Admin | Integration health (no secrets) |
+
+Perfume DTOs also expose nullable `currency`, `volumeMl`, `intensity`, `barcode`.
+
+---
+
+## 13. Frontend integration notes
 
 1. Persist `accessToken` + `refreshToken`; renew via `/api/auth/refresh`.
 2. In Development Swagger, paste the access token into Authorize.
 3. Comparison: use `analysis` to highlight common/different fields in the UI.
-4. Recommendations: show `reasons[]` as “why recommended” explanations.
-5. Notifications: poll `unread-count` + inbox list.
+4. Recommendations: show `reasons[]` / score components (relative match score, not purchase probability).
+5. Notifications: poll `unread-count` + inbox; new type `PriceDrop`.
 6. After seed you can log in with the demo accounts (see [section 4](#4-database-seed)).
+7. Wishlist ≠ Favorites. Wardrobe = collections + `scenarioKey`.
+8. Blind comparison: do not show names/brands until `complete` — API withholds them while Active.
 
 ---
 

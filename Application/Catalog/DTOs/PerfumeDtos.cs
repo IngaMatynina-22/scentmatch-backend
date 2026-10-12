@@ -70,6 +70,10 @@ public class PerfumeListItemDto
     public string? Concentration { get; set; }
     public string? Gender { get; set; }
     public decimal? Price { get; set; }
+    public string? Currency { get; set; }
+    public decimal? VolumeMl { get; set; }
+    public int? Intensity { get; set; }
+    public string? Barcode { get; set; }
     public string? ImageUrl { get; set; }
     public decimal Rating { get; set; }
     public int ReviewsCount { get; set; }
@@ -93,6 +97,10 @@ public class CreatePerfumeRequest
     public string? Concentration { get; set; }
     public string? Gender { get; set; }
     public decimal? Price { get; set; }
+    public string? Currency { get; set; }
+    public decimal? VolumeMl { get; set; }
+    public int? Intensity { get; set; }
+    public string? Barcode { get; set; }
     public string? ImageUrl { get; set; }
     public PerfumeCharacteristicsDto? Characteristics { get; set; }
     public List<PerfumeNoteInputDto> Notes { get; set; } = [];
@@ -110,6 +118,10 @@ public class UpdatePerfumeRequest
     public string? Concentration { get; set; }
     public string? Gender { get; set; }
     public decimal? Price { get; set; }
+    public string? Currency { get; set; }
+    public decimal? VolumeMl { get; set; }
+    public int? Intensity { get; set; }
+    public string? Barcode { get; set; }
     public string? ImageUrl { get; set; }
     public PerfumeCharacteristicsDto? Characteristics { get; set; }
     public List<PerfumeNoteInputDto> Notes { get; set; } = [];
