@@ -87,6 +87,52 @@ public static class TextCriteriaParser
         ["All Season"] = ["all season", "all-season", "будь-який сезон", "на всі сезони"]
     };
 
+    /// <summary>
+    /// UA/EN stems matched via Contains against free text (covers declined forms like «ваніллю»).
+    /// </summary>
+    private static readonly Dictionary<string, string[]> NoteAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Vanilla"] = ["ваніл", "vanill"],
+        ["Rose"] = ["троянд", "руж"],
+        ["Bergamot"] = ["бергамот"],
+        ["Sandalwood"] = ["сандал"],
+        ["Cedar"] = ["кедр", "кедров"],
+        ["Jasmine"] = ["жасмин", "жасмін"],
+        ["Musk"] = ["мускус"],
+        ["Patchouli"] = ["пачул"],
+        ["Lavender"] = ["лаванд"],
+        ["Lemon"] = ["лимон"],
+        ["Pepper"] = ["перець", "перц"],
+        ["Amber"] = ["амбр"],
+        ["Oud"] = ["oud"],
+        ["Tobacco"] = ["тютюн"],
+        ["Coffee"] = ["кав"],
+        ["Iris"] = ["ірис", "ирис"],
+        ["Vetiver"] = ["ветивер"],
+        ["Tonka Bean"] = ["тонк"],
+        ["Orange Blossom"] = ["цвіт апельсин", "апельсинов квіт"],
+        ["Apple"] = ["яблук"],
+        ["Pear"] = ["груш"],
+        ["Pineapple"] = ["ананас"],
+        ["Cinnamon"] = ["кориц"],
+        ["Ginger"] = ["імбир", "имбир"],
+        ["Leather"] = ["шкір", "кож"]
+    };
+
+    private static readonly (string Token, int Value)[] OccasionIntensityMap =
+    [
+        ("вечір", 75),
+        ("вечер", 75),
+        ("evening", 75),
+        ("night", 80),
+        ("нічн", 80),
+        ("ночн", 80),
+        ("денн", 40),
+        ("daytime", 40),
+        ("office", 35),
+        ("офіс", 35)
+    ];
+
     public static TextParseResult Parse(string text, TextCriteriaCatalog catalog)
     {
         var criteria = new ParsedTextCriteriaDto();
@@ -96,6 +142,7 @@ public static class TextCriteriaParser
 
         ParseBudget(normalized, criteria);
         ParseIntensity(lower, criteria);
+        ParseOccasionIntensity(lower, criteria);
         ParseConcentration(lower, criteria);
         ParseGender(lower, criteria);
         ParseSeason(lower, catalog, criteria, ambiguous);
@@ -259,6 +306,24 @@ public static class TextCriteriaParser
         });
     }
 
+    private static void ParseOccasionIntensity(string lower, ParsedTextCriteriaDto criteria)
+    {
+        // Only fill intensity from occasion words when not already set by explicit intensity tokens.
+        if (criteria.Intensity != null)
+        {
+            return;
+        }
+
+        foreach (var (token, value) in OccasionIntensityMap)
+        {
+            if (lower.Contains(token, StringComparison.Ordinal))
+            {
+                criteria.Intensity = value;
+                return;
+            }
+        }
+    }
+
     private static void ParseNotes(
         string original,
         string lower,
@@ -273,12 +338,17 @@ public static class TextCriteriaParser
         foreach (var note in catalog.Notes.OrderByDescending(n => n.Name.Length))
         {
             var noteLower = note.Name.ToLowerInvariant();
-            if (!lower.Contains(noteLower, StringComparison.Ordinal))
+            var matchedByName = lower.Contains(noteLower, StringComparison.Ordinal);
+            var matchedByAlias = NoteAliases.TryGetValue(note.Name, out var aliases)
+                && aliases.Any(a => lower.Contains(a, StringComparison.Ordinal));
+
+            if (!matchedByName && !matchedByAlias)
             {
                 continue;
             }
 
-            if (IsExcludedContext(original, note.Name))
+            if (IsExcludedContext(original, note.Name)
+                || aliasesExcluded(original, note.Name))
             {
                 if (excluded.All(x => x.Id != note.Id))
                 {
@@ -289,6 +359,25 @@ public static class TextCriteriaParser
             {
                 preferred.Add(new NamedIdDto { Id = note.Id, Name = note.Name });
             }
+        }
+
+        bool aliasesExcluded(string text, string noteName)
+        {
+            if (!NoteAliases.TryGetValue(noteName, out var aliases))
+            {
+                return false;
+            }
+
+            foreach (var alias in aliases)
+            {
+                var pattern = $@"(?:\bбез\b|\bwithout\b|\bno\b|\bокрім\b|\bexcept\b)\s+{Regex.Escape(alias)}";
+                if (Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // Detect ambiguous short tokens that match multiple notes

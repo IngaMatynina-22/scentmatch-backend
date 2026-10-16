@@ -81,6 +81,8 @@ if (seedOnly)
 
 await IdentityRoleSeeder.SeedAsync(app.Services);
 await CatalogDemoSeeder.SeedAsync(app.Services);
+await DemoUsersSeeder.SeedAsync(app.Services);
+await DemoReviewsSeeder.SeedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

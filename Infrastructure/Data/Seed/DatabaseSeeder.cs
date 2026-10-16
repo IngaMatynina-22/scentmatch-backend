@@ -35,6 +35,9 @@ public static class DatabaseSeeder
         logger.LogInformation("Seeding demo users...");
         await DemoUsersSeeder.SeedAsync(serviceProvider);
 
+        logger.LogInformation("Seeding demo reviews...");
+        await DemoReviewsSeeder.SeedAsync(serviceProvider);
+
         logger.LogInformation("Database seed finished successfully.");
     }
 }

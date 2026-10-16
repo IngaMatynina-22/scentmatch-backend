@@ -78,6 +78,15 @@ public class TextCriteriaParserTests
     }
 
     [Fact]
+    public void Parse_UkrainianVanillaAndEvening_SetsNoteAndIntensity()
+    {
+        var result = TextCriteriaParser.Parse("Вечірній з ваніллю", Catalog);
+
+        Assert.Contains(result.Criteria.PreferredNotes, n => n.Name == "Vanilla");
+        Assert.Equal(75, result.Criteria.Intensity);
+    }
+
+    [Fact]
     public void Parse_IntensityAndConcentration()
     {
         var result = TextCriteriaParser.Parse("strong edp for women", Catalog);
