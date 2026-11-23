@@ -472,8 +472,19 @@ public class PerfumeService : IPerfumeService
         return NoteTypes.Base;
     }
 
-    private static string? NormalizeCurrency(string? currency) =>
-        string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
+    private static string? NormalizeCurrency(string? currency)
+    {
+        if (string.IsNullOrWhiteSpace(currency))
+        {
+            return "UAH";
+        }
+
+        return currency.Trim().ToUpperInvariant() switch
+        {
+            "₴" or "ГРН" or "ГРИВНЯ" or "ГРИВНІ" or "UAH" => "UAH",
+            var value => value
+        };
+    }
 
     private static string? NormalizeBarcode(string? barcode) =>
         string.IsNullOrWhiteSpace(barcode) ? null : barcode.Trim();

@@ -12,7 +12,7 @@ public class Perfume
     public string? Gender { get; set; }
     public decimal? Price { get; set; }
     /// <summary>ISO 4217 currency for catalog Price. Null means currency unknown, not zero.</summary>
-    public string? Currency { get; set; }
+    public string? Currency { get; set; } = "UAH";
     /// <summary>Bottle volume in milliliters when known.</summary>
     public decimal? VolumeMl { get; set; }
     /// <summary>Overall intensity 0–100. Null means unknown, not zero intensity.</summary>

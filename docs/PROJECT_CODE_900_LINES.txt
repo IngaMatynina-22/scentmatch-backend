@@ -1,0 +1,924 @@
+// ScentMatch - selected source files, concatenated for reading.
+// This mixed C# / TypeScript file is not a single compilable source file.
+
+// ===== FILE: scentmatch-backend/API/Program.cs =====
+
+using FluentValidation.AspNetCore;
+using Microsoft.OpenApi.Models;
+using ScentMatch.API.Middleware;
+using ScentMatch.Application.DependencyInjection;
+using ScentMatch.Infrastructure.Data.Seed;
+using ScentMatch.Infrastructure.DependencyInjection;
+
+var seedOnly = args.Any(a =>
+    a.Equals("--seed", StringComparison.OrdinalIgnoreCase) ||
+    a.Equals("--seed-db", StringComparison.OrdinalIgnoreCase));
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddEndpointsApiExplorer();
+
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+    ?? [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy.WithOrigins(corsOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ScentMatch API",
+        Version = "v1",
+        Description = "Backend API for personalized perfume matching and comparison."
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter JWT access token"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+
+var app = builder.Build();
+
+if (seedOnly)
+{
+    await DatabaseSeeder.SeedAsync(app.Services, applyMigrations: true);
+    return;
+}
+
+await IdentityRoleSeeder.SeedAsync(app.Services);
+await CatalogDemoSeeder.SeedAsync(app.Services);
+await DemoUsersSeeder.SeedAsync(app.Services);
+await DemoReviewsSeeder.SeedAsync(app.Services);
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "ScentMatch API v1");
+    });
+}
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseRouting();
+app.UseCors("Frontend");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+
+public partial class Program;
+
+// ===== FILE: scentmatch-backend/API/Controllers/AuthController.cs =====
+
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using ScentMatch.Application.Auth.DTOs;
+using ScentMatch.Application.Auth.Interfaces;
+
+namespace ScentMatch.API.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
+{
+    private readonly IAuthService _authService;
+
+    public AuthController(IAuthService authService)
+    {
+        _authService = authService;
+    }
+
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> Register(
+        [FromBody] RegisterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _authService.RegisterAsync(request, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> Login(
+        [FromBody] LoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _authService.LoginAsync(request, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> Refresh(
+        [FromBody] RefreshTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _authService.RefreshAsync(request, cancellationToken);
+        return Ok(response);
+    }
+
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Logout(
+        [FromBody] RefreshTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _authService.LogoutAsync(request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<UserResponse>> Me(CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var response = await _authService.GetCurrentUserAsync(userId, cancellationToken);
+        return Ok(response);
+    }
+}
+
+// ===== FILE: scentmatch-backend/Infrastructure/Auth/JwtTokenService.cs =====
+
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using ScentMatch.Application.Auth.Interfaces;
+using ScentMatch.Application.Options;
+using ScentMatch.Domain.Entities;
+
+namespace ScentMatch.Infrastructure.Auth;
+
+public class JwtTokenService : IJwtTokenService
+{
+    private readonly JwtSettings _jwtSettings;
+
+    public JwtTokenService(IOptions<JwtSettings> jwtSettings)
+    {
+        _jwtSettings = jwtSettings.Value;
+    }
+
+    public (string AccessToken, DateTime ExpiresAt) CreateAccessToken(User user, IEnumerable<string> roles)
+    {
+        var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes);
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+            new(JwtRegisteredClaimNames.UniqueName, user.UserName ?? string.Empty),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.UserName ?? string.Empty),
+            new(ClaimTypes.Email, user.Email ?? string.Empty)
+        };
+
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Key));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: credentials);
+
+        var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+        return (accessToken, expiresAt);
+    }
+
+    public string GenerateRefreshToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(64);
+        return Convert.ToBase64String(bytes);
+    }
+
+    public string HashRefreshToken(string refreshToken)
+    {
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(refreshToken));
+        return Convert.ToHexString(hashBytes);
+    }
+}
+
+// ===== FILE: scentmatch-backend/API/Controllers/MatchingController.cs =====
+
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using ScentMatch.Application.Common.Exceptions;
+using ScentMatch.Application.History.Interfaces;
+using ScentMatch.Application.Matching.DTOs;
+using ScentMatch.Application.Matching.Interfaces;
+using ScentMatch.Domain.Constants;
+
+namespace ScentMatch.API.Controllers;
+
+[ApiController]
+[Route("api/matching")]
+[Authorize]
+public class MatchingController : ControllerBase
+{
+    private readonly IMatchingService _matchingService;
+    private readonly ITextMatchingService _textMatchingService;
+    private readonly IGiftMatchingService _giftMatchingService;
+    private readonly ISelectionHistoryService _selectionHistoryService;
+
+    public MatchingController(
+        IMatchingService matchingService,
+        ITextMatchingService textMatchingService,
+        IGiftMatchingService giftMatchingService,
+        ISelectionHistoryService selectionHistoryService)
+    {
+        _matchingService = matchingService;
+        _textMatchingService = textMatchingService;
+        _giftMatchingService = giftMatchingService;
+        _selectionHistoryService = selectionHistoryService;
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(MatchingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<MatchingResponse>> Match(
+        [FromBody] MatchingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _matchingService.MatchAsync(request, cancellationToken);
+        await _selectionHistoryService.CreateFromMatchingAsync(
+            userId,
+            request,
+            result.Items,
+            MatchingScenarioTypes.Personal,
+            cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Free-text matching (UA/EN). Persists selection history with ScenarioType=Text.
+    /// </summary>
+    [HttpPost("text")]
+    [ProducesResponseType(typeof(TextMatchingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<TextMatchingResponse>> MatchText(
+        [FromBody] TextMatchingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        var result = await _textMatchingService.MatchAsync(request, cancellationToken);
+
+        var matchingRequest = TextCriteriaToMatchingRequest(result.ParsedCriteria);
+        if (HasAnyCriterion(matchingRequest))
+        {
+            await _selectionHistoryService.CreateFromMatchingAsync(
+                userId,
+                matchingRequest,
+                result.Items,
+                MatchingScenarioTypes.Text,
+                cancellationToken);
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Gift matching. Authenticated users get ScenarioType=Gift history (excluded from personalization).
+    /// Anonymous callers are allowed and skip history persistence.
+    /// </summary>
+    [HttpPost("gift")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(GiftMatchingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<GiftMatchingResponse>> MatchGift(
+        [FromBody] GiftMatchingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _giftMatchingService.MatchAsync(request, cancellationToken);
+
+        if (TryGetCurrentUserId(out var userId))
+        {
+            var matchingRequest = new MatchingRequest
+            {
+                SeasonId = request.SeasonId,
+                FragranceTypeId = request.FragranceTypeId,
+                MinPrice = request.MinPrice,
+                MaxPrice = request.MaxPrice,
+                Intensity = request.Intensity,
+                Gender = request.Gender,
+                SelectedNoteIds = request.PreferredNoteIds,
+                ExcludedNoteIds = request.ExcludedNoteIds
+            };
+
+            await _selectionHistoryService.CreateFromMatchingAsync(
+                userId,
+                matchingRequest,
+                result.Items,
+                MatchingScenarioTypes.Gift,
+                cancellationToken);
+        }
+
+        return Ok(result);
+    }
+
+    private static MatchingRequest TextCriteriaToMatchingRequest(ParsedTextCriteriaDto criteria) => new()
+    {
+        SeasonId = criteria.SeasonId,
+        FragranceTypeId = criteria.FragranceTypeId,
+        MinPrice = criteria.MinPrice,
+        MaxPrice = criteria.MaxPrice,
+        Intensity = criteria.Intensity,
+        Concentration = criteria.Concentration,
+        Gender = criteria.Gender,
+        SelectedNoteIds = criteria.PreferredNotes.Select(x => x.Id).ToList(),
+        ExcludedNoteIds = criteria.ExcludedNotes.Select(x => x.Id).ToList()
+    };
+
+    private static bool HasAnyCriterion(MatchingRequest request) =>
+        request.SeasonId.HasValue
+        || request.FragranceTypeId.HasValue
+        || request.MinPrice.HasValue
+        || request.MaxPrice.HasValue
+        || request.Intensity.HasValue
+        || !string.IsNullOrWhiteSpace(request.Concentration)
+        || !string.IsNullOrWhiteSpace(request.Gender)
+        || (request.SelectedNoteIds is { Count: > 0 })
+        || (request.ExcludedNoteIds is { Count: > 0 });
+
+    private int GetCurrentUserId()
+    {
+        if (!TryGetCurrentUserId(out var userId))
+        {
+            throw new UnauthorizedException("User identity is invalid.");
+        }
+
+        return userId;
+    }
+
+    private bool TryGetCurrentUserId(out int userId)
+    {
+        userId = 0;
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        return int.TryParse(userIdClaim, out userId);
+    }
+}
+
+// ===== FILE: scentmatch-backend/Application/Common/Scoring/PerfumeScoring.cs =====
+
+namespace ScentMatch.Application.Common.Scoring;
+
+/// <summary>
+/// Shared deterministic scoring helpers.
+/// Missing values are skipped (not treated as zero / dissimilar).
+/// </summary>
+public static class PerfumeScoring
+{
+    public const decimal NoteTopWeight = 1.0m;
+    public const decimal NoteMiddleWeight = 1.2m;
+    public const decimal NoteBaseWeight = 1.4m;
+
+    public static decimal Clamp01(decimal value) => Math.Clamp(value, 0m, 1m);
+
+    public static decimal CharacteristicSimilarity(int a, int b) =>
+        Clamp01(1m - Math.Abs(a - b) / 100m);
+
+    public static decimal PriceSimilarity(decimal price, decimal? minPrice, decimal? maxPrice)
+    {
+        var inRange =
+            (!minPrice.HasValue || price >= minPrice.Value)
+            && (!maxPrice.HasValue || price <= maxPrice.Value);
+
+        if (inRange)
+        {
+            return 1m;
+        }
+
+        decimal distance;
+        if (minPrice.HasValue && price < minPrice.Value)
+        {
+            distance = minPrice.Value - price;
+        }
+        else if (maxPrice.HasValue && price > maxPrice.Value)
+        {
+            distance = price - maxPrice.Value;
+        }
+        else
+        {
+            return 0m;
+        }
+
+        var span = (maxPrice ?? minPrice ?? 0m) - (minPrice ?? 0m);
+        if (span <= 0m)
+        {
+            span = minPrice ?? maxPrice ?? 100m;
+        }
+
+        if (span <= 0m)
+        {
+            span = 100m;
+        }
+
+        return Clamp01(1m - distance / span);
+    }
+
+    public static decimal NoteTypeWeight(string noteType) =>
+        noteType.Equals("Base", StringComparison.OrdinalIgnoreCase) ? NoteBaseWeight
+        : noteType.Equals("Middle", StringComparison.OrdinalIgnoreCase) ? NoteMiddleWeight
+        : NoteTopWeight;
+
+    /// <summary>
+    /// Weighted Jaccard-like similarity over notes. Missing notes on either side do not invent mismatch
+    /// beyond the overlap ratio of available note sets.
+    /// </summary>
+    public static (decimal Similarity, decimal SharedWeight, decimal UnionWeight) NoteSimilarity(
+        IReadOnlyList<ProfileNote> a,
+        IReadOnlyList<ProfileNote> b)
+    {
+        if (a.Count == 0 || b.Count == 0)
+        {
+            return (0m, 0m, 0m);
+        }
+
+        var aWeights = a
+            .GroupBy(x => x.NoteId)
+            .ToDictionary(g => g.Key, g => g.Max(x => NoteTypeWeight(x.NoteType)));
+        var bWeights = b
+            .GroupBy(x => x.NoteId)
+            .ToDictionary(g => g.Key, g => g.Max(x => NoteTypeWeight(x.NoteType)));
+
+        decimal shared = 0m;
+        decimal union = 0m;
+        foreach (var id in aWeights.Keys.Union(bWeights.Keys))
+        {
+            aWeights.TryGetValue(id, out var aw);
+            bWeights.TryGetValue(id, out var bw);
+            var max = Math.Max(aw, bw);
+            union += max;
+            if (aw > 0 && bw > 0)
+            {
+                shared += Math.Min(aw, bw);
+            }
+        }
+
+        if (union <= 0m)
+        {
+            return (0m, 0m, 0m);
+        }
+
+        return (Clamp01(shared / union), shared, union);
+    }
+
+    public static decimal SeasonSimilarity(IReadOnlyList<ProfileSeason> seasons, int seasonId)
+    {
+        var match = seasons.FirstOrDefault(x => x.SeasonId == seasonId);
+        if (match is null || !match.Suitability.HasValue)
+        {
+            return 0m;
+        }
+
+        return Clamp01(match.Suitability.Value / 100m);
+    }
+
+    public static IEnumerable<(string Key, int? Value)> CharacteristicPairs(PerfumeProfile p)
+    {
+        yield return ("Sweetness", p.Sweetness);
+        yield return ("Freshness", p.Freshness);
+        yield return ("Woody", p.Woody);
+        yield return ("Spicy", p.Spicy);
+        yield return ("Citrus", p.Citrus);
+        yield return ("Floral", p.Floral);
+        yield return ("Fruity", p.Fruity);
+        yield return ("Powdery", p.Powdery);
+        yield return ("Smoky", p.Smoky);
+        yield return ("Oriental", p.Oriental);
+    }
+
+    public static decimal? GetCharacteristic(PerfumeProfile p, string key) => key switch
+    {
+        "Sweetness" => p.Sweetness,
+        "Freshness" => p.Freshness,
+        "Woody" => p.Woody,
+        "Spicy" => p.Spicy,
+        "Citrus" => p.Citrus,
+        "Floral" => p.Floral,
+        "Fruity" => p.Fruity,
+        "Powdery" => p.Powdery,
+        "Smoky" => p.Smoky,
+        "Oriental" => p.Oriental,
+        "Intensity" => p.Intensity,
+        _ => null
+    };
+
+    public static ScoreBreakdown Normalize(
+        IReadOnlyList<ScoreComponent> components,
+        IReadOnlyList<string> positives,
+        IReadOnlyList<string> mismatches,
+        IReadOnlyList<string> gaps)
+    {
+        var active = components.Where(c => !c.SkippedDueToMissingData).ToList();
+        var totalWeight = active.Sum(c => c.Weight);
+        var score = totalWeight <= 0m
+            ? 0m
+            : Math.Round(100m * active.Sum(c => c.Weight * c.Similarity) / totalWeight, 2, MidpointRounding.AwayFromZero);
+
+        return new ScoreBreakdown
+        {
+            TotalScore = Math.Clamp(score, 0m, 100m),
+            Components = components.ToList(),
+            PositiveReasons = positives.ToList(),
+            MismatchReasons = mismatches.ToList(),
+            DataGaps = gaps.ToList(),
+            IncompleteData = gaps.Count > 0
+        };
+    }
+}
+
+// ===== FILE: scentmatch-frontend/src/shared/api/httpClient.ts =====
+
+import { env } from '@/shared/config/env'
+import { ApiError, mapStatusToCode } from '@/shared/api/errors'
+import type { RequestOptions } from '@/shared/api/types'
+
+export type TokenAccessor = {
+  getAccessToken: () => string | null
+  /**
+   * Single-flight refresh. Must resolve to a new access token or reject.
+   * Concurrent 401s should await the same in-flight promise.
+   */
+  refreshAccessToken: () => Promise<string>
+  onSessionInvalid: () => void
+}
+
+let tokenAccessor: TokenAccessor | null = null
+let refreshPromise: Promise<string> | null = null
+
+export function configureHttpClient(accessor: TokenAccessor): void {
+  tokenAccessor = accessor
+}
+
+function buildUrl(path: string, query?: RequestOptions['query']): string {
+  const base = env.apiBaseUrl
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const url = new URL(`${base}${normalizedPath}`, base || window.location.origin)
+
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value === null || value === undefined) continue
+      url.searchParams.set(key, String(value))
+    }
+  }
+
+  return url.toString()
+}
+
+async function parseBody(response: Response): Promise<unknown> {
+  if (response.status === 204) return null
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    return response.json()
+  }
+
+  const text = await response.text()
+  return text.length > 0 ? text : null
+}
+
+async function runRefresh(): Promise<string> {
+  if (!tokenAccessor) {
+    throw new ApiError('Auth token accessor is not configured', {
+      status: 401,
+      code: 'UNAUTHORIZED',
+    })
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = tokenAccessor
+      .refreshAccessToken()
+      .catch((error: unknown) => {
+        tokenAccessor?.onSessionInvalid()
+        throw error
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+
+  return refreshPromise
+}
+
+export async function httpRequest<T>(options: RequestOptions): Promise<T> {
+  if (!env.apiBaseUrl && !options.path.startsWith('http')) {
+    throw new ApiError(
+      'VITE_API_BASE_URL is not configured. Copy .env.example to .env and set the API URL.',
+      { status: 0, code: 'NETWORK' },
+    )
+  }
+
+  const headers: Record<string, string> = {
+    Accept: options.accept ?? 'application/json',
+    ...options.headers,
+  }
+
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData
+
+  if (options.body !== undefined && !isFormData) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  if (!options.skipAuth) {
+    const accessToken = tokenAccessor?.getAccessToken()
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`
+    }
+  }
+
+  let response: Response
+
+  try {
+    response = await fetch(buildUrl(options.path, options.query), {
+      method: options.method ?? 'GET',
+      headers,
+      body:
+        options.body === undefined
+          ? undefined
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
+      signal: options.signal,
+    })
+  } catch (cause) {
+    throw new ApiError('Network request failed', {
+      status: 0,
+      code: 'NETWORK',
+      cause,
+    })
+  }
+
+  if (
+    response.status === 401 &&
+    !options.skipAuth &&
+    !options.skipRefresh &&
+    tokenAccessor
+  ) {
+    try {
+      const nextAccessToken = await runRefresh()
+      return httpRequest<T>({
+        ...options,
+        skipRefresh: true,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${nextAccessToken}`,
+        },
+      })
+    } catch {
+      // Session cleared in runRefresh; surface as unauthorized.
+      throw new ApiError('Session expired', {
+        status: 401,
+        code: 'UNAUTHORIZED',
+      })
+    }
+  }
+
+  const payload = await parseBody(response)
+
+  if (!response.ok) {
+    const message =
+      typeof payload === 'object' &&
+      payload !== null &&
+      'message' in payload &&
+      typeof (payload as { message: unknown }).message === 'string'
+        ? (payload as { message: string }).message
+        : `Request failed with status ${response.status}`
+
+    throw new ApiError(message, {
+      status: response.status,
+      code: mapStatusToCode(response.status),
+      details: payload,
+    })
+  }
+
+  return payload as T
+}
+
+export type BlobDownload = {
+  blob: Blob
+  fileName: string | null
+  contentType: string | null
+}
+
+/** Binary / file download with the same auth + refresh behaviour as httpRequest. */
+export async function httpRequestBlob(
+  options: Omit<RequestOptions, 'accept'> & { accept?: string },
+): Promise<BlobDownload> {
+  if (!env.apiBaseUrl && !options.path.startsWith('http')) {
+    throw new ApiError(
+      'VITE_API_BASE_URL is not configured. Copy .env.example to .env and set the API URL.',
+      { status: 0, code: 'NETWORK' },
+    )
+  }
+
+  const headers: Record<string, string> = {
+    Accept: options.accept ?? '*/*',
+    ...options.headers,
+  }
+
+  if (!options.skipAuth) {
+    const accessToken = tokenAccessor?.getAccessToken()
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`
+    }
+  }
+
+  let response: Response
+  try {
+    response = await fetch(buildUrl(options.path, options.query), {
+      method: options.method ?? 'GET',
+      headers,
+      signal: options.signal,
+    })
+  } catch (cause) {
+    throw new ApiError('Network request failed', {
+      status: 0,
+      code: 'NETWORK',
+      cause,
+    })
+  }
+
+  if (
+    response.status === 401 &&
+    !options.skipAuth &&
+    !options.skipRefresh &&
+    tokenAccessor
+  ) {
+    try {
+      const nextAccessToken = await runRefresh()
+      return httpRequestBlob({
+        ...options,
+        skipRefresh: true,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${nextAccessToken}`,
+        },
+      })
+    } catch {
+      throw new ApiError('Session expired', {
+        status: 401,
+        code: 'UNAUTHORIZED',
+      })
+    }
+  }
+
+  if (!response.ok) {
+    const payload = await parseBody(response)
+    const message =
+      typeof payload === 'object' &&
+      payload !== null &&
+      'message' in payload &&
+      typeof (payload as { message: unknown }).message === 'string'
+        ? (payload as { message: string }).message
+        : `Request failed with status ${response.status}`
+
+    throw new ApiError(message, {
+      status: response.status,
+      code: mapStatusToCode(response.status),
+      details: payload,
+    })
+  }
+
+  const disposition = response.headers.get('content-disposition')
+  let fileName: string | null = null
+  if (disposition) {
+    const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
+    const plainMatch = /filename="?([^";]+)"?/i.exec(disposition)
+    fileName = decodeURIComponent(
+      (utfMatch?.[1] ?? plainMatch?.[1] ?? '').trim(),
+    )
+    if (!fileName) fileName = null
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName,
+    contentType: response.headers.get('content-type'),
+  }
+}
+
+// ===== FILE: scentmatch-frontend/src/features/matching/api/matchingApi.ts =====
+
+import { httpRequest } from '@/shared/api/httpClient'
+import type {
+  GiftMatchingRequest,
+  GiftMatchingResponse,
+  MatchingRequest,
+  MatchingResponse,
+  TextMatchingRequest,
+  TextMatchingResponse,
+} from '@/features/matching/model/types'
+
+export const matchingApi = {
+  /** POST /api/matching — requires auth */
+  match(
+    request: MatchingRequest,
+    signal?: AbortSignal,
+  ): Promise<MatchingResponse> {
+    return httpRequest<MatchingResponse>({
+      path: '/api/matching',
+      method: 'POST',
+      body: request,
+      signal,
+    })
+  },
+
+  /** POST /api/matching/text — requires auth */
+  matchText(
+    request: TextMatchingRequest,
+    signal?: AbortSignal,
+  ): Promise<TextMatchingResponse> {
+    return httpRequest<TextMatchingResponse>({
+      path: '/api/matching/text',
+      method: 'POST',
+      body: request,
+      signal,
+    })
+  },
+
+  /** POST /api/matching/gift — AllowAnonymous */
+  matchGift(
+    request: GiftMatchingRequest,
+    signal?: AbortSignal,
+  ): Promise<GiftMatchingResponse> {
+    return httpRequest<GiftMatchingResponse>({
+      path: '/api/matching/gift',
+      method: 'POST',
+      body: request,
+      signal,
+    })
+  },
+}

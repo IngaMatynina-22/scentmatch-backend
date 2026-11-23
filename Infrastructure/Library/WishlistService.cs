@@ -211,6 +211,15 @@ public class WishlistService : IWishlistService
 
     private static string? NormalizeCurrency(string? currency)
     {
-        return string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(currency))
+        {
+            return "UAH";
+        }
+
+        return currency.Trim().ToUpperInvariant() switch
+        {
+            "₴" or "ГРН" or "ГРИВНЯ" or "ГРИВНІ" or "UAH" => "UAH",
+            var value => value
+        };
     }
 }

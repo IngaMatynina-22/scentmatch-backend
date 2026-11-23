@@ -30,8 +30,8 @@ public static class DemoUsersSeeder
                 email: AdminEmail,
                 username: "admin",
                 password: AdminPassword,
-                firstName: "Demo",
-                lastName: "Admin",
+                firstName: "Демо",
+                lastName: "Адміністратор",
                 role: AppRoles.Admin);
 
             var user = await EnsureUserAsync(
@@ -40,8 +40,8 @@ public static class DemoUsersSeeder
                 email: UserEmail,
                 username: "demouser",
                 password: UserPassword,
-                firstName: "Demo",
-                lastName: "User",
+                firstName: "Демо",
+                lastName: "Користувач",
                 role: AppRoles.User);
 
             await EnsureUserPreferencesAsync(db, user.Id);
@@ -104,17 +104,17 @@ public static class DemoUsersSeeder
         }
 
         var seasonId = await db.Seasons
-            .Where(x => x.Name == "Summer")
+            .Where(x => x.Name == "Літо")
             .Select(x => (int?)x.Id)
             .FirstOrDefaultAsync();
 
         var typeId = await db.FragranceTypes
-            .Where(x => x.Name == "Woody")
+            .Where(x => x.Name == "Деревний")
             .Select(x => (int?)x.Id)
             .FirstOrDefaultAsync();
 
         var noteIds = await db.Notes
-            .Where(x => x.Name == "Bergamot" || x.Name == "Sandalwood")
+            .Where(x => x.Name == "Бергамот" || x.Name == "Сандал")
             .Select(x => x.Id)
             .ToListAsync();
 
@@ -136,8 +136,8 @@ public static class DemoUsersSeeder
             Powdery = 10,
             Smoky = 20,
             Oriental = 25,
-            MinPrice = 50,
-            MaxPrice = 250,
+            MinPrice = 2000,
+            MaxPrice = 10000,
             UpdatedAt = DateTime.UtcNow
         });
 

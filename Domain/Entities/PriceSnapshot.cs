@@ -7,7 +7,7 @@ public class PriceSnapshot
     public int? PriceWatchId { get; set; }
     public string SourceName { get; set; } = string.Empty;
     public string? SourceUrl { get; set; }
-    public string Currency { get; set; } = "EUR";
+    public string Currency { get; set; } = "UAH";
     public decimal Price { get; set; }
     public DateTime CapturedAt { get; set; }
 

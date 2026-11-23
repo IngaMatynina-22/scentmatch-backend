@@ -7,6 +7,8 @@ ASP.NET Core Web API for personalized perfume matching and comparison (**ScentMa
 | Language | File |
 | --- | --- |
 | Українська | [docs/API.uk.md](docs/API.uk.md) |
+| Українська — опис реалізації | [docs/PROJECT_IMPLEMENTATION.uk.md](docs/PROJECT_IMPLEMENTATION.uk.md) |
+| Українська — огляд і UML | [docs/PROJECT_OVERVIEW.uk.md](docs/PROJECT_OVERVIEW.uk.md) |
 | English | [docs/API.en.md](docs/API.en.md) |
 
 The docs cover setup, seed, auth, every route, request/response models, business rules, and error codes.

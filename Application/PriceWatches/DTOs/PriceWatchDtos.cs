@@ -4,7 +4,7 @@ public class CreatePriceWatchRequest
 {
     public int PerfumeId { get; set; }
     public decimal TargetPrice { get; set; }
-    public string Currency { get; set; } = "EUR";
+    public string Currency { get; set; } = "UAH";
     public int? ShopLinkId { get; set; }
     public string? SourceUrl { get; set; }
     public string? SourceName { get; set; }
@@ -29,7 +29,7 @@ public class PriceWatchDto
     public int? ShopLinkId { get; set; }
     public string? SourceName { get; set; }
     public string? SourceUrl { get; set; }
-    public string Currency { get; set; } = "EUR";
+    public string Currency { get; set; } = "UAH";
     public decimal TargetPrice { get; set; }
     public decimal? LastKnownPrice { get; set; }
     public DateTime? LastCheckedAt { get; set; }
@@ -47,7 +47,7 @@ public class PriceSnapshotDto
     public int? PriceWatchId { get; set; }
     public string SourceName { get; set; } = string.Empty;
     public string? SourceUrl { get; set; }
-    public string Currency { get; set; } = "EUR";
+    public string Currency { get; set; } = "UAH";
     public decimal Price { get; set; }
     public DateTime CapturedAt { get; set; }
 }

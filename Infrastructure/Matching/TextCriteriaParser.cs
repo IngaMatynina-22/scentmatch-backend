@@ -442,7 +442,7 @@ public static class TextCriteriaParser
     {
         "€" or "EUR" => "EUR",
         "$" or "USD" => "USD",
-        "ГРН" or "UAH" => "UAH",
+        "₴" or "ГРН" or "ГРИВНЯ" or "ГРИВНІ" or "UAH" => "UAH",
         _ => raw.Trim().ToUpperInvariant()
     };
 }

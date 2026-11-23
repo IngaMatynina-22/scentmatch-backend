@@ -21,7 +21,7 @@ public sealed class PriceProviderRequest
     public string? BrandName { get; init; }
     public string? SourceUrl { get; init; }
     public string? SourceName { get; init; }
-    public string Currency { get; init; } = "EUR";
+    public string Currency { get; init; } = "UAH";
 }
 
 public sealed class PriceProviderResult

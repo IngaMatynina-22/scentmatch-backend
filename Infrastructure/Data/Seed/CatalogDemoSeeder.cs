@@ -19,11 +19,11 @@ public static class CatalogDemoSeeder
         {
             await EnsureReferenceDataAsync(db);
             await EnsureDemoCatalogAsync(db);
-            logger.LogInformation("Catalog demo seed completed.");
+            logger.LogInformation("Сід демо-каталогу успішно виконано.");
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Catalog demo seed skipped due to database error.");
+            logger.LogWarning(ex, "Сід демо-каталогу пропущено через помилку бази даних.");
         }
     }
 
@@ -32,26 +32,60 @@ public static class CatalogDemoSeeder
         if (!await db.Seasons.AnyAsync())
         {
             db.Seasons.AddRange(
-                new Season { Name = "Spring" },
-                new Season { Name = "Summer" },
-                new Season { Name = "Autumn" },
-                new Season { Name = "Winter" },
-                new Season { Name = "All Season" });
+                new Season { Name = "Весна" },
+                new Season { Name = "Літо" },
+                new Season { Name = "Осінь" },
+                new Season { Name = "Зима" },
+                new Season { Name = "Будь-який сезон" });
+        }
+        else
+        {
+            var seasonNames = new Dictionary<string, string>
+            {
+                ["Spring"] = "Весна", ["Summer"] = "Літо", ["Autumn"] = "Осінь",
+                ["Winter"] = "Зима", ["All Season"] = "Будь-який сезон"
+            };
+            var seasons = await db.Seasons.ToListAsync();
+            foreach (var season in seasons)
+            {
+                if (seasonNames.TryGetValue(season.Name, out var localized))
+                {
+                    season.Name = localized;
+                }
+            }
         }
 
         if (!await db.FragranceTypes.AnyAsync())
         {
             db.FragranceTypes.AddRange(
-                new FragranceType { Name = "Woody" },
-                new FragranceType { Name = "Floral" },
-                new FragranceType { Name = "Oriental" },
-                new FragranceType { Name = "Fresh" },
-                new FragranceType { Name = "Citrus" },
-                new FragranceType { Name = "Fruity" },
-                new FragranceType { Name = "Gourmand" },
-                new FragranceType { Name = "Aromatic" },
-                new FragranceType { Name = "Chypre" },
-                new FragranceType { Name = "Leather" });
+                new FragranceType { Name = "Деревний" },
+                new FragranceType { Name = "Квітковий" },
+                new FragranceType { Name = "Східний" },
+                new FragranceType { Name = "Свіжий" },
+                new FragranceType { Name = "Цитрусовий" },
+                new FragranceType { Name = "Фруктовий" },
+                new FragranceType { Name = "Гурманський" },
+                new FragranceType { Name = "Ароматний" },
+                new FragranceType { Name = "Шипровий" },
+                new FragranceType { Name = "Шкіряний" });
+        }
+        else
+        {
+            var typeNames = new Dictionary<string, string>
+            {
+                ["Woody"] = "Деревний", ["Floral"] = "Квітковий", ["Oriental"] = "Східний",
+                ["Fresh"] = "Свіжий", ["Citrus"] = "Цитрусовий", ["Fruity"] = "Фруктовий",
+                ["Gourmand"] = "Гурманський", ["Aromatic"] = "Ароматний",
+                ["Chypre"] = "Шипровий", ["Leather"] = "Шкіряний"
+            };
+            var types = await db.FragranceTypes.ToListAsync();
+            foreach (var type in types)
+            {
+                if (typeNames.TryGetValue(type.Name, out var localized))
+                {
+                    type.Name = localized;
+                }
+            }
         }
 
         await db.SaveChangesAsync();
@@ -66,10 +100,19 @@ public static class CatalogDemoSeeder
 
         foreach (var (name, category) in Notes.Concat(ExtraNotes).DistinctBy(x => x.Name))
         {
-            if (!await db.Notes.AnyAsync(x => x.Name == name))
+            var localizedName = LocalizeNote(name);
+            var localizedCategory = LocalizeNoteCategory(category);
+            if (!await db.Notes.AnyAsync(x => x.Name == localizedName))
             {
-                db.Notes.Add(new Note { Name = name, Category = category });
+                db.Notes.Add(new Note { Name = localizedName, Category = localizedCategory });
             }
+        }
+
+        var existingNotes = await db.Notes.ToListAsync();
+        foreach (var note in existingNotes)
+        {
+            note.Name = LocalizeNote(note.Name);
+            note.Category = LocalizeNoteCategory(note.Category);
         }
 
         await db.SaveChangesAsync();
@@ -82,60 +125,60 @@ public static class CatalogDemoSeeder
 
     private static readonly (string Name, string Description, string Country, string Website)[] Brands =
     [
-        ("Chanel", "French luxury fashion and fragrance house.", "France", "https://www.chanel.com"),
-        ("Dior", "Christian Dior perfume house.", "France", "https://www.dior.com"),
-        ("Tom Ford", "Luxury designer fragrance brand.", "USA", "https://www.tomford.com"),
-        ("Yves Saint Laurent", "YSL Beauty fragrances.", "France", "https://www.yslbeauty.com"),
-        ("Guerlain", "Historic French perfume house.", "France", "https://www.guerlain.com"),
-        ("Hermès", "French luxury house fragrances.", "France", "https://www.hermes.com"),
-        ("Creed", "Niche fragrance house.", "France", "https://www.creedboutique.com"),
-        ("Maison Francis Kurkdjian", "Modern niche perfume house.", "France", "https://www.franciskurkdjian.com"),
-        ("Byredo", "Swedish niche fragrance brand.", "Sweden", "https://www.byredo.com"),
-        ("Jo Malone", "British fragrance and cologne house.", "UK", "https://www.jomalone.com"),
-        ("Versace", "Italian fashion house fragrances.", "Italy", "https://www.versace.com"),
-        ("Armani", "Giorgio Armani beauty and fragrance.", "Italy", "https://www.armani.com"),
-        ("Paco Rabanne", "Bold designer fragrances.", "Spain", "https://www.rabanne.com"),
-        ("Viktor & Rolf", "Dutch fashion house scents.", "Netherlands", "https://www.viktor-rolf.com"),
-        ("Lancôme", "French beauty and perfume brand.", "France", "https://www.lancome.com"),
-        ("Mugler", "Dramatic and iconic designer scents.", "France", "https://www.mugler.com"),
-        ("Prada", "Italian luxury fashion fragrances.", "Italy", "https://www.prada.com"),
-        ("Burberry", "British luxury fragrance house.", "UK", "https://www.burberry.com"),
-        ("Cartier", "French jeweler fragrance line.", "France", "https://www.cartier.com"),
-        ("Acqua di Parma", "Italian classic cologne house.", "Italy", "https://www.acquadiparma.com")
+        ("Chanel", "Французький дім моди та парфумерії.", "Франція", "https://www.chanel.com"),
+        ("Dior", "Парфумерний дім Christian Dior.", "Франція", "https://www.dior.com"),
+        ("Tom Ford", "Розкішний дизайнерський парфумерний бренд.", "США", "https://www.tomford.com"),
+        ("Yves Saint Laurent", "Парфумерія YSL Beauty.", "Франція", "https://www.yslbeauty.com"),
+        ("Guerlain", "Історичний французький парфумерний дім.", "Франція", "https://www.guerlain.com"),
+        ("Hermès", "Парфумерія французького дому Hermès.", "Франція", "https://www.hermes.com"),
+        ("Creed", "Нішевий парфумерний дім.", "Франція", "https://www.creedboutique.com"),
+        ("Maison Francis Kurkdjian", "Сучасний нішевий парфумерний дім.", "Франція", "https://www.franciskurkdjian.com"),
+        ("Byredo", "Шведський нішевий парфумерний бренд.", "Швеція", "https://www.byredo.com"),
+        ("Jo Malone", "Британський дім парфумів та одеколонів.", "Великобританія", "https://www.jomalone.com"),
+        ("Versace", "Парфумерія італійського модного дому.", "Італія", "https://www.versace.com"),
+        ("Armani", "Краса та парфумерія Giorgio Armani.", "Італія", "https://www.armani.com"),
+        ("Paco Rabanne", "Смілливі дизайнерські парфуми.", "Іспанія", "https://www.rabanne.com"),
+        ("Viktor & Rolf", "Парфуми голландського модного дому.", "Нідерланди", "https://www.viktor-rolf.com"),
+        ("Lancôme", "Французький бренд краси та парфумерії.", "Франція", "https://www.lancome.com"),
+        ("Mugler", "Ефектні та знакові дизайнерські парфуми.", "Франція", "https://www.mugler.com"),
+        ("Prada", "Італійська розкішна парфумерія.", "Італія", "https://www.prada.com"),
+        ("Burberry", "Британський розкішний парфумерний дім.", "Великобританія", "https://www.burberry.com"),
+        ("Cartier", "Парфумерна лінія французького ювелірного дому.", "Франція", "https://www.cartier.com"),
+        ("Acqua di Parma", "Італійський класичний дім одеколонів.", "Італія", "https://www.acquadiparma.com")
     ];
 
     private static readonly (string Name, string Category)[] Notes =
     [
-        ("Bergamot", "Citrus"),
-        ("Rose", "Floral"),
-        ("Vanilla", "Gourmand"),
-        ("Sandalwood", "Woody"),
-        ("Jasmine", "Floral"),
-        ("Amber", "Oriental"),
-        ("Cedar", "Woody"),
-        ("Lemon", "Citrus"),
-        ("Patchouli", "Woody"),
-        ("Musk", "Powdery"),
-        ("Pepper", "Spicy"),
-        ("Iris", "Powdery"),
-        ("Lavender", "Aromatic"),
-        ("Orange Blossom", "Floral"),
-        ("Oud", "Woody"),
-        ("Tonka Bean", "Gourmand"),
-        ("Apple", "Fruity"),
-        ("Pineapple", "Fruity"),
-        ("Grapefruit", "Citrus"),
-        ("Vetiver", "Woody"),
-        ("Incense", "Oriental"),
-        ("Leather", "Leather"),
-        ("Cardamom", "Spicy"),
-        ("Coconut", "Gourmand"),
-        ("Peony", "Floral"),
-        ("Neroli", "Citrus"),
-        ("Tobacco", "Woody"),
-        ("Cinnamon", "Spicy"),
-        ("Pear", "Fruity"),
-        ("Sea Notes", "Fresh")
+        ("Бергамот", "Цитрусові"),
+        ("Троянда", "Квіткові"),
+        ("Ваніль", "Гурманські"),
+        ("Сандал", "Деревні"),
+        ("Жасмин", "Квіткові"),
+        ("Амбра", "Східні"),
+        ("Кедр", "Деревні"),
+        ("Лимон", "Цитрусові"),
+        ("Пачулі", "Деревні"),
+        ("Мускус", "Пудрові"),
+        ("Перець", "Пряні"),
+        ("Ірис", "Пудрові"),
+        ("Лаванда", "Ароматні"),
+        ("Квітка апельсина", "Квіткові"),
+        ("Уд", "Деревні"),
+        ("Боби тонка", "Гурманські"),
+        ("Яблуко", "Фруктові"),
+        ("Ананас", "Фруктові"),
+        ("Грейпфрут", "Цитрусові"),
+        ("Ветивер", "Деревні"),
+        ("Ладан", "Східні"),
+        ("Шкіра", "Шкіряні"),
+        ("Кардамон", "Пряні"),
+        ("Кокос", "Гурманські"),
+        ("Півонія", "Квіткові"),
+        ("Неролі", "Цитрусові"),
+        ("Тютюн", "Деревні"),
+        ("Кориця", "Пряні"),
+        ("Груша", "Фруктові"),
+        ("Морські ноти", "Свіжі")
     ];
 
     private sealed record SeedPerfume(
@@ -335,36 +378,36 @@ public static class CatalogDemoSeeder
     // Extra note names used above that must exist
     private static readonly (string Name, string Category)[] ExtraNotes =
     [
-        ("Sage", "Aromatic"),
-        ("Coffee", "Gourmand"),
-        ("Ginger", "Spicy"),
-        ("Tuberose", "Floral"),
-        ("Birch", "Woody"),
-        ("Ambergris", "Oriental"),
-        ("Saffron", "Spicy"),
-        ("Amberwood", "Woody"),
-        ("Fir Resin", "Woody"),
-        ("Nutmeg", "Spicy"),
-        ("Violet Leaf", "Green"),
-        ("Aldehydes", "Aldehydic"),
-        ("Ambrette", "Musky"),
-        ("Freesia", "Floral"),
-        ("Mint", "Aromatic"),
-        ("Yuzu", "Citrus"),
-        ("Rosemary", "Aromatic"),
-        ("Mineral Notes", "Fresh"),
-        ("Blackcurrant", "Fruity"),
-        ("Blood Mandarin", "Citrus"),
-        ("Bay Leaf", "Aromatic"),
-        ("Guaiac Wood", "Woody"),
-        ("Tea", "Aromatic"),
-        ("Pink Pepper", "Spicy"),
-        ("Honey", "Gourmand"),
-        ("Cashmeran", "Woody"),
-        ("Ambroxan", "Woody"),
-        ("Strawberry", "Fruity"),
-        ("Juniper", "Aromatic"),
-        ("Orange", "Citrus")
+        ("Шавлія", "Ароматні"),
+        ("Кава", "Гурманські"),
+        ("Імбир", "Пряні"),
+        ("Тубероза", "Квіткові"),
+        ("Береза", "Деревні"),
+        ("Амбра сірого", "Східні"),
+        ("Шафран", "Пряні"),
+        ("Амброве дерево", "Деревні"),
+        ("Смола ялиці", "Деревні"),
+        ("Мускатний горіх", "Пряні"),
+        ("Листя фіалки", "Зелені"),
+        ("Альдегіди", "Альдегідні"),
+        ("Амбретта", "Мускусні"),
+        ("Фрезія", "Квіткові"),
+        ("М'ята", "Ароматні"),
+        ("Юдзу", "Цитрусові"),
+        ("Розмарин", "Ароматні"),
+        ("Мінеральні ноти", "Свіжі"),
+        ("Чорна смородина", "Фруктові"),
+        ("Кров'яний мандарин", "Цитрусові"),
+        ("Лавровий лист", "Ароматні"),
+        ("Гваякове дерево", "Деревні"),
+        ("Чай", "Ароматні"),
+        ("Рожевий перець", "Пряні"),
+        ("Мед", "Гурманські"),
+        ("Кашмеран", "Деревні"),
+        ("Амброксан", "Деревні"),
+        ("Полуниця", "Фруктові"),
+        ("Яловець", "Ароматні"),
+        ("Апельсин", "Цитрусові")
     ];
 
     private static async Task EnsureBrandAsync(
@@ -374,8 +417,14 @@ public static class CatalogDemoSeeder
         string country,
         string website)
     {
-        if (await db.Brands.AnyAsync(x => x.Name == name))
+        var existing = await db.Brands.FirstOrDefaultAsync(x => x.Name == name);
+        if (existing is not null)
         {
+            existing.Description = description;
+            existing.Country = country;
+            existing.Website = website;
+            existing.IsActive = true;
+            await db.SaveChangesAsync();
             return;
         }
 
@@ -397,17 +446,18 @@ public static class CatalogDemoSeeder
         // Ensure any extra notes referenced by this perfume exist
         foreach (var (noteName, _) in seed.Notes)
         {
-            if (!await db.Notes.AnyAsync(x => x.Name == noteName))
+            var localizedNoteName = LocalizeNote(noteName);
+            if (!await db.Notes.AnyAsync(x => x.Name == localizedNoteName))
             {
-                var category = ExtraNotes.FirstOrDefault(x => x.Name == noteName).Category
-                               ?? Notes.FirstOrDefault(x => x.Name == noteName).Category
-                               ?? "Other";
+                var category = ExtraNotes.FirstOrDefault(x => x.Name == localizedNoteName).Category
+                               ?? Notes.FirstOrDefault(x => x.Name == localizedNoteName).Category
+                               ?? "Інше";
                 if (string.IsNullOrEmpty(category))
                 {
-                    category = "Other";
+                    category = "Інше";
                 }
 
-                db.Notes.Add(new Note { Name = noteName, Category = category });
+                db.Notes.Add(new Note { Name = localizedNoteName, Category = category });
                 await db.SaveChangesAsync();
             }
         }
@@ -422,6 +472,11 @@ public static class CatalogDemoSeeder
         if (existing is not null)
         {
             var changed = false;
+            existing.Currency = "UAH";
+            existing.Price = seed.Price * 40m;
+            existing.Description = BuildUkrainianDescription(seed);
+            existing.Gender = LocalizeGender(seed.Gender);
+            changed = true;
             if (string.IsNullOrWhiteSpace(existing.ImageUrl))
             {
                 existing.ImageUrl = imageUrl;
@@ -454,7 +509,7 @@ public static class CatalogDemoSeeder
         }
 
         var brand = await db.Brands.FirstAsync(x => x.Name == seed.BrandName);
-        var fragranceType = await db.FragranceTypes.FirstAsync(x => x.Name == seed.FragranceTypeName);
+        var fragranceType = await db.FragranceTypes.FirstAsync(x => x.Name == LocalizeFragranceType(seed.FragranceTypeName));
         var c = seed.Characteristics;
 
         var perfume = new Perfume
@@ -462,11 +517,12 @@ public static class CatalogDemoSeeder
             Name = seed.Name,
             BrandId = brand.Id,
             FragranceTypeId = fragranceType.Id,
-            Description = seed.Description,
+            Description = BuildUkrainianDescription(seed),
             ReleaseYear = seed.ReleaseYear,
             Concentration = seed.Concentration,
-            Gender = seed.Gender,
-            Price = seed.Price,
+            Gender = LocalizeGender(seed.Gender),
+            Price = seed.Price * 40m,
+            Currency = "UAH",
             ImageUrl = imageUrl,
             Rating = 0,
             ReviewsCount = 0,
@@ -489,7 +545,7 @@ public static class CatalogDemoSeeder
 
         foreach (var (noteName, noteType) in seed.Notes)
         {
-            var note = await db.Notes.FirstAsync(x => x.Name == noteName);
+            var note = await db.Notes.FirstAsync(x => x.Name == LocalizeNote(noteName));
             db.PerfumeNotes.Add(new PerfumeNote
             {
                 PerfumeId = perfume.Id,
@@ -501,7 +557,7 @@ public static class CatalogDemoSeeder
         foreach (var (seasonName, suitability) in seed.Seasons)
         {
             // Skip invalid season labels
-            var season = await db.Seasons.FirstOrDefaultAsync(x => x.Name == seasonName);
+            var season = await db.Seasons.FirstOrDefaultAsync(x => x.Name == LocalizeSeason(seasonName));
             if (season is null)
             {
                 continue;
@@ -528,6 +584,126 @@ public static class CatalogDemoSeeder
 
         await db.SaveChangesAsync();
     }
+
+    private static string LocalizeSeason(string name) => name switch
+    {
+        "Spring" => "Весна",
+        "Summer" => "Літо",
+        "Autumn" => "Осінь",
+        "Winter" => "Зима",
+        "All Season" => "Будь-який сезон",
+        _ => name
+    };
+
+    private static string LocalizeFragranceType(string name) => name switch
+    {
+        "Woody" => "Деревний",
+        "Floral" => "Квітковий",
+        "Oriental" => "Східний",
+        "Fresh" => "Свіжий",
+        "Citrus" => "Цитрусовий",
+        "Fruity" => "Фруктовий",
+        "Gourmand" => "Гурманський",
+        "Aromatic" => "Ароматний",
+        "Chypre" => "Шипровий",
+        "Leather" => "Шкіряний",
+        _ => name
+    };
+
+    private static string LocalizeGender(string gender) => gender switch
+    {
+        "Male" => "Чоловічий",
+        "Female" => "Жіночий",
+        "Unisex" => "Унісекс",
+        _ => gender
+    };
+
+    private static string LocalizeNoteCategory(string category) => category switch
+    {
+        "Citrus" => "Цитрусові",
+        "Floral" => "Квіткові",
+        "Gourmand" => "Гурманські",
+        "Woody" => "Деревні",
+        "Oriental" => "Східні",
+        "Powdery" => "Пудрові",
+        "Spicy" => "Пряні",
+        "Aromatic" => "Ароматні",
+        "Leather" => "Шкіряні",
+        "Fruity" => "Фруктові",
+        "Fresh" => "Свіжі",
+        "Green" => "Зелені",
+        "Aldehydic" => "Альдегідні",
+        "Musky" => "Мускусні",
+        _ => category
+    };
+
+    private static string LocalizeNote(string name) => name switch
+    {
+        "Bergamot" => "Бергамот",
+        "Rose" => "Троянда",
+        "Vanilla" => "Ваніль",
+        "Sandalwood" => "Сандал",
+        "Jasmine" => "Жасмин",
+        "Amber" => "Амбра",
+        "Cedar" => "Кедр",
+        "Lemon" => "Лимон",
+        "Patchouli" => "Пачулі",
+        "Musk" => "Мускус",
+        "Pepper" => "Перець",
+        "Iris" => "Ірис",
+        "Lavender" => "Лаванда",
+        "Orange Blossom" => "Квітка апельсина",
+        "Oud" => "Уд",
+        "Tonka Bean" => "Боби тонка",
+        "Apple" => "Яблуко",
+        "Pineapple" => "Ананас",
+        "Grapefruit" => "Грейпфрут",
+        "Vetiver" => "Ветивер",
+        "Incense" => "Ладан",
+        "Leather" => "Шкіра",
+        "Cardamom" => "Кардамон",
+        "Coconut" => "Кокос",
+        "Peony" => "Півонія",
+        "Neroli" => "Неролі",
+        "Tobacco" => "Тютюн",
+        "Cinnamon" => "Кориця",
+        "Pear" => "Груша",
+        "Sea Notes" => "Морські ноти",
+        "Sage" => "Шавлія",
+        "Coffee" => "Кава",
+        "Ginger" => "Імбир",
+        "Tuberose" => "Тубероза",
+        "Birch" => "Береза",
+        "Ambergris" => "Амбра сірого",
+        "Saffron" => "Шафран",
+        "Amberwood" => "Амброве дерево",
+        "Fir Resin" => "Смола ялиці",
+        "Nutmeg" => "Мускатний горіх",
+        "Violet Leaf" => "Листя фіалки",
+        "Aldehydes" => "Альдегіди",
+        "Ambrette" => "Амбретта",
+        "Freesia" => "Фрезія",
+        "Mint" => "М'ята",
+        "Yuzu" => "Юдзу",
+        "Rosemary" => "Розмарин",
+        "Mineral Notes" => "Мінеральні ноти",
+        "Blackcurrant" => "Чорна смородина",
+        "Blood Mandarin" => "Кров'яний мандарин",
+        "Bay Leaf" => "Лавровий лист",
+        "Guaiac Wood" => "Гваякове дерево",
+        "Tea" => "Чай",
+        "Pink Pepper" => "Рожевий перець",
+        "Honey" => "Мед",
+        "Cashmeran" => "Кашмеран",
+        "Ambroxan" => "Амброксан",
+        "Strawberry" => "Полуниця",
+        "Juniper" => "Яловець",
+        "Orange" => "Апельсин",
+        _ => name
+    };
+
+    private static string BuildUkrainianDescription(SeedPerfume seed) =>
+        $"{seed.Name} — {LocalizeFragranceType(seed.FragranceTypeName).ToLowerInvariant()} аромат {LocalizeGender(seed.Gender).ToLowerInvariant()} формату.";
 
     private static string ImageUrl(string seed) =>
         $"https://picsum.photos/seed/{Uri.EscapeDataString(seed)}/600/800";

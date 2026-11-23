@@ -15,21 +15,21 @@ public static class DemoReviewsSeeder
 {
     private static readonly (string PerfumeName, int Rating, string Text)[] Seeds =
     [
-        ("Bleu de Chanel", 5, "Clean woody classic — everyday signature."),
-        ("Bleu de Chanel", 4, "Fresh opening, solid longevity."),
-        ("Sauvage", 5, "Bright bergamot and pepper, very versatile."),
-        ("Sauvage", 4, "Strong projection; great for summer."),
-        ("Coco Mademoiselle", 5, "Elegant rose-patchouli balance."),
-        ("Aventus", 5, "Iconic pineapple birch — worth the price."),
-        ("Aventus", 3, "Batch variance, but still a benchmark."),
-        ("Black Orchid", 4, "Rich and dramatic for evenings."),
-        ("Tobacco Vanille", 5, "Warm gourmand comfort scent."),
-        ("Libre", 4, "Modern lavender-floral with warmth."),
-        ("Terre d'Hermès", 5, "Earthy orange and flint — unique."),
-        ("La Vie Est Belle", 4, "Sweet iris praline, crowd-pleaser."),
-        ("Oud Wood", 5, "Smooth oud without heaviness."),
-        ("Miss Dior", 4, "Romantic rose bouquet."),
-        ("Y Eau de Parfum", 3, "Fresh daily wear, a bit safe."),
+        ("Bleu de Chanel", 5, "Чистий деревний класик — чудовий щоденний аромат."),
+        ("Bleu de Chanel", 4, "Свіжий старт і стабільна стійкість."),
+        ("Sauvage", 5, "Яскраві бергамот і перець, дуже універсальний."),
+        ("Sauvage", 4, "Сильний шлейф; чудово для літа."),
+        ("Coco Mademoiselle", 5, "Вишукана рівновага троянди й пачулі."),
+        ("Aventus", 5, "Знаковий ананас із березою — вартий своєї ціни."),
+        ("Aventus", 3, "Партія може відрізнятися, але це орієнтир."),
+        ("Black Orchid", 4, "Насичений і драматичний для вечора."),
+        ("Tobacco Vanille", 5, "Теплий гурманський аромат із комфортним нотами."),
+        ("Libre", 4, "Сучасне поєднання лаванди й квітів із теплом."),
+        ("Terre d'Hermès", 5, "Земляний апельсин і кремінь — неповторний аромат."),
+        ("La Vie Est Belle", 4, "Солодкий ірис із праліне."),
+        ("Oud Wood", 5, "М'який уд без надмірної важкості."),
+        ("Miss Dior", 4, "Романтичний букет троянд."),
+        ("Y Eau de Parfum", 3, "Свіжий аромат для щодня, трохи безпечний."),
     ];
 
     public static async Task SeedAsync(IServiceProvider serviceProvider)
